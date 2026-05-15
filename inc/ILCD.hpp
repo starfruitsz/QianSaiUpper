@@ -31,7 +31,7 @@ enum class Direction : uint8_t
 
 enum class NumFillMode : uint8_t
 {
-    FillZero  = 0,  // 多余位填充 ''0''
+    FillZero  = 0,  // 多余位填充 '0'
     FillSpace = 1   // 多余位填充空格
 };
 
@@ -214,13 +214,13 @@ public:
     // 显示单个 ASCII 字符
     void drawChar(uint16_t x, uint16_t y, uint8_t c)
     {
-        if (!mAsciiFont || c < '' '' || c > ''~'')
+        if (!mAsciiFont || c < ' ' || c > '~')
         {
             return;
         }
         auto &f = *mAsciiFont;
         // 根据 ASCII 码计算在字模表中的偏移
-        drawGlyphFromFont(x, y, c - '' '', f);
+        drawGlyphFromFont(x, y, c - ' ', f);
     }
 
     // 显示 ASCII 字符串（支持 \n 换行）
@@ -233,7 +233,7 @@ public:
         uint16_t cx = x;
         for (; *s; ++s)
         {
-            if (*s == ''\n'')
+            if (*s == '\n')
             {
                 cx = x;
                 y += mAsciiFont->height;
@@ -288,7 +288,7 @@ public:
                 t += 2;
                 cx += mChFont->width;
             }
-            else if (c >= '' '' && c <= ''~'' && mAsciiFont)
+            else if (c >= ' ' && c <= '~' && mAsciiFont)
             {
                 drawChar(cx, y, c);
                 ++t;
@@ -319,17 +319,17 @@ public:
             int idx = len - 1;
             do
             {
-                buf[idx--] = ''0'' + (absVal % 10);
+                buf[idx--] = '0' + (absVal % 10);
                 absVal /= 10;
             }
             while (idx >= 0 && absVal > 0);
             while (idx >= 0)
             {
-                buf[idx--] = ''0'';
+                buf[idx--] = '0';
             }
             if (neg && len > 0)
             {
-                buf[0] = ''-'';
+                buf[0] = '-';
             }
         }
         else
@@ -556,7 +556,8 @@ public:
             bh = 1;
         }
         uint16_t ya = y, bc = 0;
-        for (uint16_t row = 0; row < h; ++row)
+        uint16_t row = 0;
+        for (; row < h; ++row)
         {
             // 逐字节解析位图，bit=1 用画笔色，bit=0 用背景色
             for (uint16_t col = 0; col < (w + 7) / 8; ++col)
@@ -639,7 +640,7 @@ protected:
     }
 
     // 通用字形渲染引擎（ASCII 和中文共用）
-    // charIdx: ASCII 为 (c-'' '')，中文为字库表索引
+    // charIdx: ASCII 为 (c-' ')，中文为字库表索引
     void drawGlyphFromFont(uint16_t x, uint16_t y, uint16_t charIdx, const Font &f)
     {
         uint16_t bh = (BufferSz / 2) / f.width;
@@ -652,7 +653,7 @@ protected:
         {
             for (uint16_t col = 0; col < f.width; ++col)
             {
-                // 中文字库: charIdx * (sizes+2) 跳转到对应字模；ASCII: charIdx = (c-'' '')*sizes
+                // 中文字库: charIdx * (sizes+2) 跳转到对应字模；ASCII: charIdx = (c-' ')*sizes
                 uint16_t base = (f.tableRows > 0) ? charIdx * (f.sizes + 2) : charIdx;
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = 7 - (col % 8);
