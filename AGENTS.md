@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-基于 C++17 的 STM32 LCD 驱动抽象层，目标芯片 STM32F407ZG，LCD 控制器 ST7789。
+基于 C++20 的 STM32 LCD 驱动抽象层，目标芯片 STM32F407ZG，LCD 控制器 ST7789。
 采用 CRTP 模板 + constexpr + header-only 架构，编译期零虚函数开销。
 
 ## 文件结构
@@ -38,7 +38,7 @@ LCD_ST7789<Transport, BufferSz>    ← 驱动子类（寄存器序列 + drawPoin
 - **中文注释**：每个方法/逻辑块有 `====` 分隔的中文说明
 - **命名空间**：所有代码在 `CTLIB::` 下
 
-## C++17 特性
+## C++17 / C++20 特性
 
 | 特性 | 说明 |
 |------|------|
@@ -48,6 +48,11 @@ LCD_ST7789<Transport, BufferSz>    ← 驱动子类（寄存器序列 + drawPoin
 | 结构化绑定 | `for (const auto &[cmd, data] : kRegs)` |
 | `template<auto>` | `GpioPin<PortAddr, PinMask>` 编译期引脚 |
 | `if constexpr` | 留待后续优化使用 |
+| `consteval` | C++20 立即函数 |
+| `std::span` | C++20 视图，替代裸指针+长度 |
+| `concepts` | C++20 模板约束，替代 `static_assert` |
+| 三路比较 `<=>` | C++20 默认运算符生成 |
+| `constexpr` 容器 | C++20 `std::vector`/`std::string` 可用于编译期 |
 
 ## 使用示例
 
@@ -72,6 +77,12 @@ CTLIB::LCD_ST7789<Transport> lcd(transport);
 lcd.init();
 lcd.drawString(10, 10, "Hello!");
 ```
+
+## 编译标准
+
+- **编译器**: `arm-none-eabi-g++`
+- **标准**: `-std=c++20`
+- **目标**: `-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb`
 
 ## 注意事项
 
