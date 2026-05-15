@@ -6,10 +6,13 @@
 #include <type_traits>
 
 // ============================================================
-// HAL 前向声明（用户需在主程序中 #include "stm32f4xx_hal.h"）
-// 此处的结构体桩确保本头文件可独立编译
+// HAL 类型兼容层
+// 若 stm32f4xx_hal.h 已引入，则使用真实类型
+// 否则使用本文件的前向声明桩（保证头文件可独立编译）
 // ============================================================
 
+#ifndef __STM32F4xx_HAL_H
+// HAL 未引入时使用前向声明
 struct GPIO_InitTypeDef
 {
     uint32_t Pin;
@@ -59,6 +62,7 @@ extern "C"
     void SPI_1LINE_TX(SPI_HandleTypeDef*);
     void HAL_Delay(uint32_t);
 }
+#endif // __STM32F4xx_HAL_H
 
 namespace CTLIB
 {
@@ -107,7 +111,7 @@ namespace SpiClkPha
 {
     static constexpr uint32_t Edge1 = 0u;
 }
-namespace SpiNss
+namespace SpiNSS
 {
     static constexpr uint32_t Soft = 1u;
 }
@@ -137,22 +141,24 @@ namespace SpiAf
 // 用法: using PinCS = GpioPin<(GPIO_TypeDef*)0x40011400, 1 << 11>;
 // ============================================================
 
-template <auto PortAddr, auto PinMask>
+template <uintptr_t PortAddr, uint16_t PinMask>
 struct GpioPin
 {
-    static constexpr auto port = static_cast<GPIO_TypeDef*>(PortAddr);
-    static constexpr auto mask = static_cast<uint16_t>(PinMask);
+    static constexpr auto mask = PinMask;
+
+    // 运行时获取端口地址（编译期整数→运行时指针）
+    static GPIO_TypeDef* port() { return reinterpret_cast<GPIO_TypeDef*>(PortAddr); }
 
     // 写高电平（直接操作 BSRR 寄存器）
     static void writeHigh()
     {
-        port->BSRR = mask;
+        port()->BSRR = mask;
     }
 
     // 写低电平（BSRR 高 16 位对应复位）
     static void writeLow()
     {
-        port->BSRR = static_cast<uint32_t>(mask) << 16u;
+        port()->BSRR = static_cast<uint32_t>(mask) << 16u;
     }
 
     // 初始化为推挽输出
@@ -163,7 +169,7 @@ struct GpioPin
         g.Mode  = GpioMode::OutputPp;
         g.Pull  = GpioPull::NoPull;
         g.Speed = speed;
-        HAL_GPIO_Init(port, &g);
+        HAL_GPIO_Init(port(), &g);
     }
 
     // 初始化为复用功能（SPI）
@@ -175,7 +181,7 @@ struct GpioPin
         g.Pull      = GpioPull::NoPull;
         g.Speed     = GpioSpeed::VeryHigh;
         g.Alternate = af;
-        HAL_GPIO_Init(port, &g);
+        HAL_GPIO_Init(port(), &g);
     }
 };
 
@@ -357,18 +363,18 @@ private:
     void peripheralInit()
     {
         auto &init = mHspi->Init;
-        mHspi->Instance        = SpiInstanceType::instance;
+        mHspi->Instance        = SpiInstanceType::instance();
         init.Mode              = SpiMode::Master;
         init.Direction         = SpiDir::OneLine;
         init.DataSize          = SpiDataSz::Data8Bit;
         init.CLKPolarity       = SpiClkPol::Low;
         init.CLKPhase          = SpiClkPha::Edge1;
-        init.Nss               = SpiNss::Soft;
+        init.NSS               = SpiNSS::Soft;
         init.BaudRatePrescaler = SpiBaud::Div2;      // 42MHz/2 = 21MHz
         init.FirstBit          = SpiBitOrder::Msb;
-        init.TiMode            = SpiTi::Disable;
-        init.CrcCalculation    = SpiCrc::Disable;
-        init.CrcPolynomial     = 0;
+        init.TIMode            = SpiTi::Disable;
+        init.CRCCalculation    = SpiCrc::Disable;
+        init.CRCPolynomial     = 0;
         HAL_SPI_Init(mHspi);
         __HAL_SPI_ENABLE(mHspi);
         SPI_1LINE_TX(mHspi);
@@ -382,7 +388,7 @@ private:
 template <uintptr_t BaseAddr>
 struct SpiInstanceDescr
 {
-    static constexpr auto instance = reinterpret_cast<SPI_TypeDef*>(BaseAddr);
+    static SPI_TypeDef* instance() { return reinterpret_cast<SPI_TypeDef*>(BaseAddr); }
 };
 
 // SPI3 基地址: 0x40003C00（STM32F4 系列）
