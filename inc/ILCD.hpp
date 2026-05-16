@@ -110,6 +110,7 @@ public:
     /* ---------- 驱动层入口（通过 CRTP 委托给子类）---------- */
 
     /* 屏幕初始化（含寄存器配置） */
+    /* Initialize LCD hardware + load default font */
     void Init()
     {
         static_cast<Driver*>(this)->ImplInit();
@@ -117,6 +118,7 @@ public:
     }
 
     /* 绘制单个像素点 */
+    /* Draw single pixel at (x,y) with RGB888 color */
     void DrawPoint(uint16_t x, uint16_t y, uint32_t c888)
     {
         static_cast<Driver*>(this)->ImplDrawPoint(x, y, c888);
@@ -125,24 +127,28 @@ public:
     /* ---------- 属性设置 ---------- */
 
     /* 设置画笔颜色（RGB888 格式） */
+    /* Set pen color (RGB888, auto-converted to RGB565) */
     constexpr void SetColor(uint32_t c) noexcept
     {
         mColor = c;
     }
 
     /* 设置背景颜色（RGB888 格式） */
+    /* Set background color for text fills and Clear() */
     constexpr void SetBackColor(uint32_t c) noexcept
     {
         mBackColor = c;
     }
 
     /* 设置数字填充模式 */
+    /* Number fill mode: FillZero pads with zero, FillSpace with spaces */
     constexpr void SetNumFillMode(NumFillMode m) noexcept
     {
         mNumFillMode = m;
     }
 
     /* 设置屏幕显示方向（CRTP 委托给子类） */
+    /* Set screen orientation: Horizontal / Vertical / Flip */
     void SetDirection(Direction dir) noexcept
     {
         mDisplayDir = dir;
@@ -150,25 +156,33 @@ public:
     }
 
         /* 背光控制（CRTP 委托给子类实现） */
+    /* Turn LCD backlight ON via PD13 */
     void BacklightOn()  { static_cast<Driver*>(this)->ImplBacklightOn(); }
+    /* Turn LCD backlight OFF via PD13 */
     void BacklightOff() { static_cast<Driver*>(this)->ImplBacklightOff(); }
 
 /* ---------- 属性读取 ---------- */
 
+    /* Get current pen color (RGB888) */
     constexpr uint32_t Color()     const noexcept { return mColor; }
+    /* Get current background color (RGB888) */
     constexpr uint32_t BackColor() const noexcept { return mBackColor; }
+    /* Get screen pixel width */
     constexpr uint16_t Width()     const noexcept { return mWidth; }
+    /* Get screen pixel height */
     constexpr uint16_t Height()    const noexcept { return mHeight; }
 
     /* ---------- 字体设置 ---------- */
 
     /* 设置 ASCII 字体 */
+    /* Set ASCII font (pass nullptr to disable text) */
     constexpr void SetAsciiFont(const Font *f) noexcept
     {
         mAsciiFont = f;
     }
 
     /* 设置中文字体（同时包含 ASCII） */
+    /* Set CJK+ASCII dual font */
     constexpr void SetTextFont(const Font *f) noexcept
     {
         mChFont = f;
@@ -177,12 +191,14 @@ public:
     /* ---------- 清屏 ---------- */
 
     /* 全屏填充背景色 */
+    /* Fill entire screen with BackColor */
     void Clear()
     {
         fillRectImpl(0, 0, mWidth, mHeight, mBackColor);
     }
 
     /* 局部矩形区域清屏 */
+    /* Fill rectangular region with BackColor */
     void ClearRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
         fillRectImpl(x, y, w, h, BackColor);
@@ -191,6 +207,7 @@ public:
     /* ---------- ASCII 字符绘制 ---------- */
 
     /* 显示单个 ASCII 字符 */
+    /* Draw single ASCII char (requires SetAsciiFont) */
     void DrawChar(uint16_t x, uint16_t y, uint8_t c)
     {
         if (!mAsciiFont || c < ' ' || c > '~')
@@ -203,6 +220,7 @@ public:
     }
 
     /* 显示 ASCII 字符串（支持 \n 换行） */
+    /* Draw ASCII string at (x,y), supports newline */
     void DrawString(uint16_t x, uint16_t y, const char *s)
     {
         if (!s || !mAsciiFont)
@@ -228,6 +246,7 @@ public:
     /* ---------- 中文绘制 ---------- */
 
     /* 显示单个汉字（GB2312 双字节编码） */
+    /* Draw GB2312 Chinese text at (x,y) */
     void DrawChinese(uint16_t x, uint16_t y, const char *text)
     {
         if (!text || !mChFont)
@@ -250,6 +269,7 @@ public:
     }
 
     /* 显示中英文混排字符串 */
+    /* Draw mixed ASCII+Chinese text, auto-detect encoding */
     void DrawText(uint16_t x, uint16_t y, const char *t)
     {
         if (!t || !mChFont)
@@ -283,6 +303,7 @@ public:
     /* ---------- 数字绘制 ---------- */
 
     /* 显示整数（支持负数、指定宽度、零填充或空格填充） */
+    /* Draw integer with fixed digit width */
     void DrawNumber(uint16_t x, uint16_t y, int32_t num, uint8_t len)
     {
         if (!mAsciiFont)
@@ -320,6 +341,7 @@ public:
     }
 
     /* 显示小数（指定总宽度和小数位数） */
+    /* Draw fixed-point decimal with specified precision */
     void DrawDecimal(uint16_t x, uint16_t y, double v, uint8_t len, uint8_t decs)
     {
         if (!mAsciiFont)
@@ -334,18 +356,21 @@ public:
     /* ---------- 2D 基本图元 ---------- */
 
     /* 水平线（快速填充一行） */
+    /* Draw horizontal 1px-thick line */
     void DrawLineH(uint16_t x, uint16_t y, uint16_t w)
     {
         fillRectImpl(x, y, w, 1, mColor);
     }
 
     /* 垂直线（快速填充一列） */
+    /* Draw vertical 1px-thick line */
     void DrawLineV(uint16_t x, uint16_t y, uint16_t h)
     {
         fillRectImpl(x, y, 1, h, mColor);
     }
 
     /* 任意两点间画线（Bresenham 算法） */
+    /* Draw line with Bresenham algorithm */
     void DrawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
     {
         int dx = static_cast<int>(x1) - static_cast<int>(x0);
@@ -402,6 +427,7 @@ public:
     }
 
     /* 空心矩形 */
+    /* Draw hollow rectangle outline */
     void DrawRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
         DrawLineH(x, y, w);
@@ -411,6 +437,7 @@ public:
     }
 
     /* 空心圆（中点画圆算法） */
+    /* Draw hollow circle outline */
     void DrawCircle(uint16_t x, uint16_t y, uint16_t r)
     {
         int cx = 0;
@@ -441,6 +468,7 @@ public:
     }
 
     /* 空心椭圆 */
+    /* Draw hollow ellipse outline */
     void DrawEllipse(int x, int y, int r1, int r2)
     {
         int cx = 0, cy = r2;
@@ -490,12 +518,14 @@ public:
     /* ---------- 区域填充 ---------- */
 
     /* 实心矩形 */
+    /* Draw filled solid rectangle */
     void FillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
         fillRectImpl(x, y, w, h, mColor);
     }
 
     /* 实心圆（水平线填充法） */
+    /* Draw filled solid circle */
     void FillCircle(uint16_t x, uint16_t y, uint16_t r)
     {
         int cx = 0, cy = static_cast<int>(r);
@@ -522,6 +552,7 @@ public:
 
     /* ---------- 单色图片绘制 ---------- */
 
+    /* Draw 1bpp bitmap (LSB-first, row-major) */
     void DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *p)
     {
         if (!p)
