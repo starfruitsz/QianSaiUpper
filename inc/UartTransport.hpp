@@ -14,7 +14,7 @@ namespace CTLIB
 /* C++20: std::format / C++11: vsnprintf 可切换 */
 /* ============================================================ */
 
-class UartTransport final : public ICommunication<UartTransport, 256>  /* C++11: final */
+class UartTransport final : public ICommunication<UartTransport, uint8_t, 256>  /* C++11: final */
 {
 public:
 
@@ -80,10 +80,10 @@ public:
     /* Send mBuf data byte-by-byte via UART TX */
     void ImplFlush(uint16_t sz)
     {
-        auto *p = reinterpret_cast<uint8_t*>(this->mBuf.Ptr());
+        auto *p = this->mBuf.Ptr();  /* uint8_t buffer, no cast needed */
         for (uint16_t i = 0; i < sz * 2; ++i)
         {
-            ImplWriteData8(p[i]);
+            ImplWriteData8(p[i]);  /* send each byte */
         }
     }
 

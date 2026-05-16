@@ -8,7 +8,7 @@
 namespace CTLIB
 {
 
-class SPITransport final : public ICommunication<SPITransport, 1024>
+class SPITransport final : public ICommunication<SPITransport, uint16_t, 1024>
 {
 public:
     explicit SPITransport(SPI_HandleTypeDef *hspi) noexcept : mHspi(hspi)

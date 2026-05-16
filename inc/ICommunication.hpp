@@ -52,7 +52,8 @@ private:
 /*                                                              */
 /* Template params:                                             */
 /*   Impl   = CRTP subclass (SPITransport / UartTransport)      */
-/*   BufSz  = buffer size in uint16_t units (default 1024)      */
+/*   T      = buffer element type (default uint16_t)             */
+/*   BufSz  = buffer element count (default 1024)               */
 /*                                                              */
 /* Public CRTP interface (all inline, zero-cost delegation):    */
 /*                                                              */
@@ -64,7 +65,7 @@ private:
 /*   Print        - formatted UART output (C++23 std::print)    */
 /* ============================================================ */
 
-template <typename Impl, uint16_t BufSz = 1024>
+template <typename Impl, typename T = uint16_t, uint16_t BufSz = 1024>
 class ICommunication
 {
 public:
@@ -79,14 +80,14 @@ public:
 
     /* --- Utility --- */
     inline void DelayMs(uint32_t ms) { GetImpl().ImplDelayMs(ms); }  /* blocking delay */
-    inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); mBuf.Reset(); }  /* flush sz elements then reset */
+    inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); mBuf.Reset(); }  /* flush sz T-elements then reset */
     inline void Flush()              { Flush(mBuf.mPos); }
 
     /* --- Buffer helpers --- */
-    inline void Buff(uint16_t val)   { mBuf.Push(val); }  /* push one pixel */
+    inline void Buff(T val)          { mBuf.Push(val); }  /* push one element */
     inline uint16_t BuffPos() const  { return mBuf.mPos; }             /* read cursor */
 
-    BufferPolicy<uint16_t, BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
+    BufferPolicy<T, BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
 
     /* ============================================================ */
     /* Print - C++23 std::print style (zero-cost format + UART TX)  */
@@ -108,7 +109,7 @@ public:
             fmt,
             std::forward<Args>(args)...
         );
-        uint16_t n = static_cast<uint16_t>((result.size + 1) / 2);  /* char count -> uint16_t count */
+        uint16_t n = static_cast<uint16_t>(result.size);  /* formatted byte count */
         Flush(n + Pos);
     }
 
