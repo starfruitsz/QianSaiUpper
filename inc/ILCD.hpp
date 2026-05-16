@@ -594,7 +594,7 @@ public:
         if (mComm.BuffPos() > 0)
         {
             SetAddr(x, ya, x + w - 1, row + y);
-            mComm.Flush(mComm.BuffPos());
+            mComm.Flush();
         }
     }
 
@@ -666,7 +666,7 @@ protected:
         if (mComm.BuffPos() > 0)
         {
             SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.Flush(mComm.BuffPos());
+            mComm.Flush();
         }
     }
 

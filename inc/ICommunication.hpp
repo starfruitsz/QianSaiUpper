@@ -79,7 +79,8 @@ public:
 
     /* --- Utility --- */
     inline void DelayMs(uint32_t ms) { GetImpl().ImplDelayMs(ms); }  /* blocking delay */
-    inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); mBuf.Reset(); }  /* flush mBuf then reset cursor */
+    inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); mBuf.Reset(); }  /* flush sz elements then reset */
+    inline void Flush()              { Flush(mBuf.mPos); }
 
     /* --- Buffer helpers --- */
     inline void Buff(uint16_t val)   { mBuf.Push(val); }               /* push one pixel */
@@ -127,12 +128,12 @@ public:
         auto &buf = this->mBuf;
         va_list args;
         va_start(args, fmt);
-        int len = vsnprintf(reinterpret_cast<char*>(buf.Ptr()), kBufSize * 2, fmt, args);
+        int len = vsnprintf(reinterpret_cast<char*>(buf.Data()), (kBufSize -  mBuf.mPos) * 2, fmt, args);
         va_end(args);
 
         if (len < 0) return;
         uint16_t n = static_cast<uint16_t>((len + 1) / 2);  /* char count -> uint16_t count */
-        Flush(n);
+        Flush(mBuf.mPos + n);
     }
 
 #endif  /* __cpp_lib_print */

@@ -77,7 +77,15 @@ public:
     /* LCD-specific stubs */
     void ImplWriteData16(uint16_t) {}
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
-    void ImplFlush(uint16_t) {}
+    /* Send mBuf data byte-by-byte via UART TX */
+    void ImplFlush(uint16_t sz)
+    {
+        auto *p = reinterpret_cast<uint8_t*>(this->mBuf.Ptr());
+        for (uint16_t i = 0; i < sz * 2; ++i)
+        {
+            ImplWriteData8(p[i]);
+        }
+    }
 
 private:
     UART_HandleTypeDef *mHuart;
