@@ -582,13 +582,7 @@ public:
                     mComm.Buff((byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor));
                 }
             }
-            /* 缓冲区满或到最后一行：批量写入显存 */
-            if (mComm.BuffPos() >= bh * w)
-            {
-                SetAddr(x, ya, x + w - 1, ya + bh - 1);
-                mComm.Flush(w * bh);
-                ya += bh;
-            }
+            /* Buff auto-flushes on overflow */
         }
         /* 剩余不足一行 */
         if (mComm.BuffPos() > 0)
@@ -654,13 +648,7 @@ protected:
                                      ? c888To565(mColor)
                                      : c888To565(mBackColor));
             }
-            /* 缓冲区满：批量写入显存 */
-            if (mComm.BuffPos() >= bh * f.width)
-            {
-                SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
-                mComm.Flush(f.width * bh);
-                ya += bh;
-            }
+            /* Buff auto-flushes on overflow */
         }
         /* 剩余不足缓冲区一整行 */
         if (mComm.BuffPos() > 0)
@@ -683,12 +671,9 @@ protected:
         for (uint16_t i = 0; i < total; ++i)
         {
             mComm.Buff(c);
-            if ((i + 1) % Transport::kBufSize == 0 || i == total - 1)
-            {
-                uint16_t chunk = ((i + 1) % Transport::kBufSize == 0) ? Transport::kBufSize : ((i % Transport::kBufSize) + 1);
-                mComm.Flush(chunk);
-            }
         }
+        SetAddr(x, y, x + w - 1, y + h - 1);
+        mComm.Flush();
     }
 };
 

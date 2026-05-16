@@ -83,7 +83,7 @@ public:
     inline void Flush()              { Flush(mBuf.mPos); }
 
     /* --- Buffer helpers --- */
-    inline void Buff(uint16_t val)   { mBuf.Push(val); }               /* push one pixel */
+    inline void Buff(uint16_t val)   { mBuf.Push(val); if (mBuf.mPos >= kBufSize) Flush(); }  /* push, auto-flush on full */
     inline uint16_t BuffPos() const  { return mBuf.mPos; }             /* read cursor */
 
     BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
@@ -101,14 +101,15 @@ public:
     void Print(std::format_string<Args...> fmt, Args&&... args)
     {
         auto &buf = this->mBuf;
+        uint16_t Pos = BuffPos();
         auto result = std::format_to_n(
-            reinterpret_cast<char*>(buf.Ptr()),
-            kBufSize * 2 - 1,
+            reinterpret_cast<char*>(buf.Data()),
+            (kBufSize -  Pos) * 2,
             fmt,
             std::forward<Args>(args)...
         );
         uint16_t n = static_cast<uint16_t>((result.size + 1) / 2);  /* char count -> uint16_t count */
-        Flush(n);
+        Flush(n + Pos);
     }
 
     /* C++23: raw string overload (no formatting overhead) */
@@ -126,14 +127,15 @@ public:
     void Print(const char *fmt, ...)
     {
         auto &buf = this->mBuf;
+        uint16_t Pos = BuffPos();
         va_list args;
         va_start(args, fmt);
-        int len = vsnprintf(reinterpret_cast<char*>(buf.Data()), (kBufSize -  mBuf.mPos) * 2, fmt, args);
+        int len = vsnprintf(reinterpret_cast<char*>(buf.Data()), (kBufSize -  Pos) * 2, fmt, args);
         va_end(args);
 
         if (len < 0) return;
         uint16_t n = static_cast<uint16_t>((len + 1) / 2);  /* char count -> uint16_t count */
-        Flush(mBuf.mPos + n);
+        Flush(Pos + n);
     }
 
 #endif  /* __cpp_lib_print */
