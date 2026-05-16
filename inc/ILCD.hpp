@@ -151,27 +151,11 @@ public:
         mNumFillMode = m;
     }
 
-    // 设置屏幕显示方向
+    // 设置屏幕显示方向（CRTP 委托给子类）
     void setDirection(Direction dir) noexcept
     {
         mDirection = dir;
-        mComm.writeCommand(0x36);
-        if (dir == Direction::Vertical)
-        {
-            mComm.writeData8(0x00);
-        }
-        else if (dir == Direction::Horizontal)
-        {
-            mComm.writeData8(0x60);
-        }
-        else if (dir == Direction::HorizontalFlip)
-        {
-            mComm.writeData8(0xA0);
-        }
-        else
-        {
-            mComm.writeData8(0xC0);
-        }
+        static_cast<Driver*>(this)->implSetDirection(dir);
     }
 
         // 背光控制（CRTP 委托给子类实现）
@@ -617,30 +601,14 @@ protected:
         return rgb888To565(c);
     }
 
-    // 设置 GRAM 地址窗口（ST7789 通用命令序列）
+    // 设置 GRAM 地址窗口（CRTP 委托给子类）
     void setAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye) noexcept
     {
         xs += mXOffset;
         ys += mYOffset;
         xe += mXOffset;
         ye += mYOffset;
-
-        // 列地址
-        mComm.writeCommand(0x2A);
-        mComm.writeData8(static_cast<uint8_t>(xs >> 8));
-        mComm.writeData8(static_cast<uint8_t>(xs));
-        mComm.writeData8(static_cast<uint8_t>(xe >> 8));
-        mComm.writeData8(static_cast<uint8_t>(xe));
-
-        // 行地址
-        mComm.writeCommand(0x2B);
-        mComm.writeData8(static_cast<uint8_t>(ys >> 8));
-        mComm.writeData8(static_cast<uint8_t>(ys));
-        mComm.writeData8(static_cast<uint8_t>(ye >> 8));
-        mComm.writeData8(static_cast<uint8_t>(ye));
-
-        // 写显存
-        mComm.writeCommand(0x2C);
+        static_cast<Driver*>(this)->implSetAddr(xs, ys, xe, ye);
     }
 
     // 通用字形渲染引擎（ASCII 和中文共用）

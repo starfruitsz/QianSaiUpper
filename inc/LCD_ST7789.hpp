@@ -31,6 +31,31 @@ public:
 private:
     void implBacklightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
     void implBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
+    void implSetDirection(Direction dir)
+    {
+        mComm.writeCommand(0x36);
+        if (dir == Direction::Vertical)        { mComm.writeData8(0x00); }
+        else if (dir == Direction::Horizontal)     { mComm.writeData8(0x60); }
+        else if (dir == Direction::HorizontalFlip) { mComm.writeData8(0xA0); }
+        else                                       { mComm.writeData8(0xC0); }
+    }
+
+    void implSetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
+    {
+        mComm.csLow();
+        // 列地址
+        mComm.writeCommand(0x2A);
+        mComm.writeData16(xs);
+        mComm.writeData16(xe);
+
+        // 行地址
+        mComm.writeCommand(0x2B);
+        mComm.writeData16(ys);
+        mComm.writeData16(ye);
+
+        // 写显存（CS=0 后保持，由调用方负责释放）
+        mComm.writeCommand(0x2C);
+    }
     // ============================================================
     // CRTP 入口 — 屏幕初始化
     // 1. 初始化 SPI 外设
