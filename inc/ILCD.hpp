@@ -97,7 +97,7 @@ namespace Colors
 template <typename Driver, typename Transport>
 class ILCD
 {
-    static_assert(std::is_base_of_v<ICommunication<Transport, 1024>, Transport> || std::is_base_of_v<ICommunication<Transport, 256>, Transport>,
+    static_assert(std::is_base_of_v<ICommunication<Transport, uint16_t, 1024>, Transport> || std::is_base_of_v<ICommunication<Transport, uint8_t, 256>, Transport>,
                   "Transport must derive from ICommunication<Transport>");
 
 public:
