@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-基于 C++20 的 STM32 LCD 驱动抽象层，目标芯片 STM32F407ZG，LCD 控制器 ST7789（1.54 寸 240x240）。
+基于 C++23 的 STM32 LCD 驱动抽象层，目标芯片 STM32F407ZG，LCD 控制器 ST7789（1.54 寸 240x240）。
 CRTP + header-only 架构，使用 CubeMX 生成的 HAL 工程。
 
 ## 文件结构
@@ -10,72 +10,87 @@ CRTP + header-only 架构，使用 CubeMX 生成的 HAL 工程。
 ```
 CTLIB/
 ├── inc/
-│   ├── ICommunication.hpp   # CRTP 通信接口（SPI 协议方法 + CS/DC 控制）
-│   ├── SPITransport.hpp     # SPI 传输层（非模板，BSRR 直接寄存器）
-│   ├── Fonts.hpp            # 字体/字模数据结构
-│   ├── ILCD.hpp             # LCD 抽象基类（绘制算法 + 背光接口）
-│   └── LCD_ST7789.hpp       # ST7789 驱动子类（init + drawPoint + 背光实现）
+│   ├── ICommunication.hpp   # CRTP 传输基类（Buffer + Print + Flush）
+│   ├── SPITransport.hpp     # SPI 传输层（WriteCommand/Cs/Dc 自管理）
+│   ├── UartTransport.hpp    # UART 传输层（printf 调试输出）
+│   ├── Fonts.hpp            # 字体结构 + 默认 12x24 ASCII 字库
+│   ├── ILCD.hpp             # LCD 抽象基类（全部绘制算法 + 背光接口）
+│   └── LCD_ST7789.hpp       # ST7789 驱动子类（寄存器 + 背光实现）
 └── AGENTS.md
 ```
 
 ## 架构
 
 ```
-ICommunication<Impl>  ← CRTP 通信接口（SPI 传输 + CS/DC/延时）
-        ↑
-SPITransport          ← SPI 硬件层（非模板，硬编码 SCK/MOSI/CS/DC 引脚）
+ICommunication<Impl, BufSz>  ← CRTP 传输基类（Buffer + Print + Flush）
+        ↑                              ↑
+SPITransport              UartTransport
+  （CS/DC/WriteCommand 自管理）  （仅 WriteData8 + Print）
         ↑  (注入到 ILCD)
-ILCD<Driver, Transport, BufferSz>  ← LCD 基类（绘制算法 + BacklightOn/Off 接口）
+ILCD<Driver, Transport>  ← LCD 基类（绘制算法 + 背光接口 + 默认字体）
         ↑
-LCD_ST7789<Transport, BufferSz>    ← 驱动子类（寄存器初始化 + 背光实现）
+LCD_ST7789<Transport>    ← 驱动子类（寄存器初始化 + 背光 + SetDirection/SetAddr）
 ```
 
-**背光控制职责划分：**
-- `ILCD` 基类声明 `BacklightOn()` / `BacklightOff()` 公开接口，通过 CRTP 委托到 `implBacklightOn/Off`
-- `LCD_ST7789` 子类在 private 区实现 `implBacklightOn/Off`，直接操作 `GPIOD->BSRR`（PD13）
-- 不同 LCD 驱动（如 ILI9341）可在自己的子类中实现不同的背光控制逻辑
+## 类职责划分
 
-## 关键实现细节（容易踩坑！）
+### ICommunication（传输基类）
+- `BufferPolicy<BufSz> mBuf` — 共享缓冲区，带 `data[]` 和 `pos` 游标
+- `Init / WriteData8/16 / DelayMs` — 通用传输接口（CRTP）
+- `Flush(sz)` — 将 `mBuf[0..sz)` 刷入硬件（子类实现：SPI burst / UART 空）
+- `Print(fmt, args...)` — C++23 `std::print` 风格格式化输出，旧标准回退 `vsnprintf`
+
+### SPITransport（SPI 子类）
+- `WriteCommand / CsLow/CsHigh / DcCommand/DcData` — LCD 专用，**非 CRTP**，直接公开方法
+- `ImplFlush` — 切换 16 位模式 → CS=0 → burst 发送 `mBuf` → CS=1 → 恢复 8 位
+
+### UartTransport（UART 子类）
+- `ImplWriteData8` — 单字节轮询 TX
+- `ImplFlush` — 空（UART 已逐字节即时发送）
+- 其余 LCD 方法为空 stub
+
+### ILCD（LCD 基类）
+- `BacklightOn/Off` — 背光控制 CRTP 接口 → 委托子类 `ImplBacklightOn/Off`
+- `SetDirection / SetAddr` — 方向 + 地址窗口 CRTP 接口 → 委托子类 `ImplSetDirection / ImplSetAddr`
+- `Init()` — 自动加载 `DefaultFont::value`（12x24 ASCII）
+- 全部 2D 绘制算法（`DrawString / FillRect / DrawCircle / DrawImage` 等）
+
+### LCD_ST7789（ST7789 驱动子类）
+- `ImplInit` — SPI 初始化 + ST7789 寄存器序列 + 方向 + 清屏 + 开背光
+- `ImplSetDirection` — 硬件 `0x36` 命令
+- `ImplSetAddr` — `CsLow` + `0x2A/0x2B/0x2C` 地址窗口
+- `ImplBacklightOn/Off` — PD13 BSRR
+- `ImplDrawPoint` — 单像素点绘制
+
+### Fonts.hpp（字库）
+- `Font` 结构体 — 兼容官方 `pFONT`
+- `makeFont<W,H,Bytes>` — `constexpr` 工厂函数
+- `DefaultFont` — 编译期静态 12x24 ASCII 字体实例
+- `Font12x24_Table[]` — 内嵌字模数据（LSB-first, PCtoLCD C51 格式）
+
+## 关键实现细节
 
 ### SPI 传输
-- **DC/CS 用 `GPIOD->BSRR` 直接寄存器操作**，不能用 HAL_GPIO_WritePin
-- **背光 BL 已从 SPITransport 移除**，由 LCD_ST7789 子类实现（`implBacklightOn/Off`）
-- **SPI_DIRECTION_1LINE**（单线双向）+ **SPI_1LINE_TX**（只发不收）
-- CubeMX 默认生成 `SPI_DIRECTION_2LINES`，需要覆盖
-- 21MHz（APB1 42MHz / 2）
+- CS=PD11, DC=PD12, SCK=PB3, MOSI=PB5, BL=PD13
+- **DC/CS/BL 用 `GPIOD->BSRR` 直接寄存器操作**
+- **SPI_DIRECTION_1LINE** + **SPI_1LINE_TX**（只发不收）
+- `WriteBulk` 已移除，统一用 `Flush(sz)` → 子类读取 `mBuf.data`
 
-### 引脚
-- SCK=PB3, MOSI=PB5（SPI3，硬编码在 SPITransport.hpp）
-- CS=PD11, DC=PD12（硬编码在 SPITransport.hpp 的 GPIO 初始化和回调中）
-- BL=PD13（由 LCD_ST7789 子类控制，不在 SPITransport 中）
+### 字体渲染
+- 位序 **LSB-first**（bit0=最左像素），匹配 PCtoLCD C51 取模格式
+- 默认 12x24 字体自动加载，用户无需调用 `SetAsciiFont`
+- `drawGlyphFromFont`：`base = charIdx * sizes`（每字符固定字节数）
 
-### CS 片选控制
-- `setAddr()`：CS=0 → 发命令(0x2A/0x2B/0x2C) → 保持 CS=0
-- `writeBulk()`：内部自管理 CS（CS=0 → 发数据 → CS=1）
-- `drawPoint()`：`setAddr` + `writeData16` + 手动 `csHigh()`
-
-### 初始化顺序（main.cpp）
-```
-MX_GPIO_Init() → MX_SPI3_Init() → gLcd.Init()
-                                      ↓
-                         SPITransport::implInit()
-                           → 开时钟 + 配 GPIO（覆盖）
-                           → SPI_DIRECTION_1LINE + 使能
-                         LCD_ST7789::implInit()
-                           → CS=0 → 寄存器序列 → CS=1
-                           → setDirection → clear → BacklightOn()
-```
-
-### 注意事项
-1. `SPITransport` 目前是非模板普通类，硬编码引脚。模板化尝试过多次，在 -Og 下会导致屏幕不亮
-2. 不能使用 `reinterpret_cast` + `constexpr`（C++ 禁止）
-3. 不能使用模板参数传指针（HAL 宏展开为表达式，非编译期常量）
-4. 如果屏幕不亮，先检查：LED 是否闪烁（确认 MCU 在跑）→ GPIO 是否有波形 → SPI 模式是否为 1LINE
+### 命名风格
+- 公开方法：大驼峰（`Init / DrawString / BacklightOn`）
+- 成员变量：`m` 前缀（`mComm / mColor / mWidth`）
+- CRTP 实现方法：`Impl` 前缀（`ImplInit / ImplFlush`）
+- 回调成员：`Cb` 前缀（`CbInit / CbCsLow`）
 
 ## 编译标准
 
 - **编译器**: `arm-none-eabi-g++`
-- **标准**: `-std=c++20`
+- **标准**: `-std=c++23`
 - **优化**: `-Og`
 - **目标**: `-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb`
 
@@ -83,6 +98,7 @@ MX_GPIO_Init() → MX_SPI3_Init() → gLcd.Init()
 
 ```cpp
 #include "LCD_ST7789.hpp"
+#include "UartTransport.hpp"
 
 // PTD 区
 using Transport = CTLIB::SPITransport;
@@ -90,23 +106,34 @@ using LcdType   = CTLIB::LCD_ST7789<Transport>;
 
 // PV 区
 extern SPI_HandleTypeDef hspi3;
-Transport gTransport(&hspi3);
-LcdType   gLcd(gTransport);
+extern UART_HandleTypeDef huart1;
+Transport              gTransport(&hspi3);
+LcdType                gLcd(gTransport);
+CTLIB::UartTransport   gUart(&huart1);
 
 // main() 中
-gLcd.Init();
+gLcd.Init();                         // 自动加载默认 12x24 字体
+gUart.Init();
 
-// 绘制
-gLcd.SetColor(0xFF0000);
-gLcd.FillRect(10, 10, 100, 50);
-gLcd.DrawString(20, 80, "Hello");
+// UART 调试输出（C++23 std::print 风格）
+gUart.Print("System Boot OK\r\n");
+gUart.Print("Clock: {} MHz, LCD: {}x{}\r\n", 168, 240, 240);
 
-// 背光控制（直接调用 LCD 基类接口）
+// LCD 绘制
+gLcd.SetBackColor(CTLIB::Colors::Blue);
+gLcd.SetColor(CTLIB::Colors::Red);
+gLcd.Clear();
+gLcd.DrawString(20, 20, "Hello STM32!");
+gLcd.DrawNumber(20, 50, 12345, 6);
+gLcd.FillRect(10, 80, 100, 50);
+
+// 背光控制
 gLcd.BacklightOn();
 gLcd.BacklightOff();
 ```
 
 ## 外部依赖
 
-- `Core/Src/lcd_image.c` + `Core/Inc/lcd_image.h`（图片取模数据，从官方例程复制）
+- `Core/Src/lcd_image.c` + `Core/Inc/lcd_image.h`（图片取模数据）
 - `Core/Src/stm32f4xx_hal_msp.c`（CubeMX 生成，含 HAL_SPI_MspInit）
+- 官方例程 `ASCII_2412_Table` 字库（已内嵌至 Fonts.hpp）
