@@ -10,36 +10,44 @@ CRTP + header-only 架构，使用 CubeMX 生成的 HAL 工程。
 ```
 CTLIB/
 ├── inc/
-│   ├── ICommunication.hpp   # CRTP 通信接口
+│   ├── ICommunication.hpp   # CRTP 通信接口（SPI 协议方法 + CS/DC 控制）
 │   ├── SPITransport.hpp     # SPI 传输层（非模板，BSRR 直接寄存器）
 │   ├── Fonts.hpp            # 字体/字模数据结构
-│   ├── ILCD.hpp             # LCD 抽象基类（全部绘制算法）
-│   └── LCD_ST7789.hpp       # ST7789 驱动子类（仅 init + drawPoint）
+│   ├── ILCD.hpp             # LCD 抽象基类（绘制算法 + 背光接口）
+│   └── LCD_ST7789.hpp       # ST7789 驱动子类（init + drawPoint + 背光实现）
 └── AGENTS.md
 ```
 
 ## 架构
 
 ```
-ICommunication<Impl>  ← CRTP 通信接口
+ICommunication<Impl>  ← CRTP 通信接口（SPI 传输 + CS/DC/延时）
         ↑
-SPITransport          ← SPI 硬件层（非模板，硬编码引脚）
+SPITransport          ← SPI 硬件层（非模板，硬编码 SCK/MOSI/CS/DC 引脚）
         ↑  (注入到 ILCD)
-ILCD<Driver, Transport, BufferSz>  ← LCD 基类
+ILCD<Driver, Transport, BufferSz>  ← LCD 基类（绘制算法 + backlightOn/Off 接口）
         ↑
-LCD_ST7789<Transport, BufferSz>    ← 驱动子类
+LCD_ST7789<Transport, BufferSz>    ← 驱动子类（寄存器初始化 + 背光实现）
 ```
+
+**背光控制职责划分：**
+- `ILCD` 基类声明 `backlightOn()` / `backlightOff()` 公开接口，通过 CRTP 委托到 `implBacklightOn/Off`
+- `LCD_ST7789` 子类在 private 区实现 `implBacklightOn/Off`，直接操作 `GPIOD->BSRR`（PD13）
+- 不同 LCD 驱动（如 ILI9341）可在自己的子类中实现不同的背光控制逻辑
 
 ## 关键实现细节（容易踩坑！）
 
 ### SPI 传输
-- **DC/CS/BL 用 `GPIOD->BSRR` 直接寄存器操作**，不能用 HAL_GPIO_WritePin
+- **DC/CS 用 `GPIOD->BSRR` 直接寄存器操作**，不能用 HAL_GPIO_WritePin
+- **背光 BL 已从 SPITransport 移除**，由 LCD_ST7789 子类实现（`implBacklightOn/Off`）
 - **SPI_DIRECTION_1LINE**（单线双向）+ **SPI_1LINE_TX**（只发不收）
 - CubeMX 默认生成 `SPI_DIRECTION_2LINES`，需要覆盖
 - 21MHz（APB1 42MHz / 2）
 
-### 引脚（硬编码在 SPITransport.hpp）
-- CS=PD11, DC=PD12, SCK=PB3, MOSI=PB5, BL=PD13
+### 引脚
+- SCK=PB3, MOSI=PB5（SPI3，硬编码在 SPITransport.hpp）
+- CS=PD11, DC=PD12（硬编码在 SPITransport.hpp 的 GPIO 初始化和回调中）
+- BL=PD13（由 LCD_ST7789 子类控制，不在 SPITransport 中）
 
 ### CS 片选控制
 - `setAddr()`：CS=0 → 发命令(0x2A/0x2B/0x2C) → 保持 CS=0
@@ -54,8 +62,8 @@ MX_GPIO_Init() → MX_SPI3_Init() → gLcd.init()
                            → 开时钟 + 配 GPIO（覆盖）
                            → SPI_DIRECTION_1LINE + 使能
                          LCD_ST7789::implInit()
-                           → CS=0 → 寄-存器序列 → CS=1
-                           → setDirection → clear → 开背光
+                           → CS=0 → 寄存器序列 → CS=1
+                           → setDirection → clear → backlightOn()
 ```
 
 ### 注意事项
@@ -92,6 +100,10 @@ gLcd.init();
 gLcd.setColor(0xFF0000);
 gLcd.fillRect(10, 10, 100, 50);
 gLcd.drawString(20, 80, "Hello");
+
+// 背光控制（直接调用 LCD 基类接口）
+gLcd.backlightOn();
+gLcd.backlightOff();
 ```
 
 ## 外部依赖
