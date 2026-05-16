@@ -85,25 +85,7 @@ public:
         while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
     }
 
-    void ImplWriteBulk(uint16_t *buf, uint16_t sz)
-    {
-        CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
-        SET_BIT(mHspi->Instance->CR1, SPI_CR1_DFF);
-        SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
-
-        CbCsLow();
-        for (uint16_t i = 0; i < sz; ++i)
-        {
-            mHspi->Instance->DR = buf[i];
-            while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
-        }
-        while (mHspi->Instance->SR & SPI_SR_BSY) {}
-        CbCsHigh();
-
-        CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
-        CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_DFF);
-        SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
-    }
+    
 
     /* --- Chip-select (active-low) --- */
     void CsLow()     { CbCsLow(); }        /* CS = 0 */
@@ -114,8 +96,26 @@ public:
     void DcData()    { CbDcDat(); }        /* DC = 1 */
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
 
-    /* === Buffer Flush — SPI 无额外操作，WriteBulk 已自管理 CS === */
-    void ImplFlush(uint16_t) {}
+    /* === Buffer Flush - SPI burst write with CS management === */
+    void ImplFlush(uint16_t sz)
+    {
+        CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
+        SET_BIT(mHspi->Instance->CR1, SPI_CR1_DFF);
+        SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
+
+        CbCsLow();
+        for (uint16_t i = 0; i < sz; ++i)
+        {
+            mHspi->Instance->DR = this->mBuf.data[i];
+            while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
+        }
+        while (mHspi->Instance->SR & SPI_SR_BSY) {}
+        CbCsHigh();
+
+        CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
+        CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_DFF);
+        SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
+    }
 
 private:
     SPI_HandleTypeDef *mHspi;

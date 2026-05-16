@@ -38,9 +38,8 @@ struct BufferPolicy
 /*   Init()       - hardware init (clocks, GPIO, peripheral)    */
 /*   WriteData8   - send 8-bit data                             */
 /*   WriteData16  - send 16-bit data MSB-first                  */
-/*   WriteBulk    - burst-write uint16_t[] buffer (optimized)   */
 /*   DelayMs      - blocking delay (HAL_Delay)                  */
-/*   Flush        - flush buffer to hardware (subclass impl)    */
+/*   Flush(sz)   - flush mBuf[0..sz) to hardware (subclass impl) */
 /*   Print        - formatted UART output (C++23 std::print)    */
 /* ============================================================ */
 
@@ -56,7 +55,6 @@ public:
     /* --- Data transfer --- */
     inline void WriteData8(uint8_t d)   { GetImpl().ImplWriteData8(d); }    /* 1 byte */
     inline void WriteData16(uint16_t d) { GetImpl().ImplWriteData16(d); }   /* 2 bytes MSB */
-    inline void WriteBulk(uint16_t *b, uint16_t s) { GetImpl().ImplWriteBulk(b, s); }  /* burst write */
 
     /* --- Utility --- */
     inline void DelayMs(uint32_t ms) { GetImpl().ImplDelayMs(ms); }  /* blocking delay */

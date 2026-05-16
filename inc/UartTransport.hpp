@@ -76,7 +76,6 @@ public:
 
     /* LCD-specific stubs */
     void ImplWriteData16(uint16_t) {}
-    void ImplWriteBulk(uint16_t *, uint16_t) {}
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
     void ImplFlush(uint16_t) {}
 

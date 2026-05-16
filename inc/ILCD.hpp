@@ -586,7 +586,7 @@ public:
             if (bc >= bh * w)
             {
                 SetAddr(x, ya, x + w - 1, ya + bh - 1);
-                mComm.WriteBulk(mComm.mBuf.data, w * bh);
+                mComm.Flush(w * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -595,7 +595,7 @@ public:
         if (bc > 0)
         {
             SetAddr(x, ya, x + w - 1, row + y);
-            mComm.WriteBulk(mComm.mBuf.data, bc);
+            mComm.Flush(bc);
         }
     }
 
@@ -659,7 +659,7 @@ protected:
             if (bc >= bh * f.width)
             {
                 SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
-                mComm.WriteBulk(mComm.mBuf.data, f.width * bh);
+                mComm.Flush(f.width * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -668,7 +668,7 @@ protected:
         if (bc > 0)
         {
             SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.WriteBulk(mComm.mBuf.data, bc);
+            mComm.Flush(bc);
         }
     }
 
@@ -688,7 +688,7 @@ protected:
             if ((i + 1) % Transport::kBufSize == 0 || i == total - 1)
             {
                 uint16_t chunk = ((i + 1) % Transport::kBufSize == 0) ? Transport::kBufSize : ((i % Transport::kBufSize) + 1);
-                mComm.WriteBulk(mComm.mBuf.data, chunk);
+                mComm.Flush(chunk);
             }
         }
     }
