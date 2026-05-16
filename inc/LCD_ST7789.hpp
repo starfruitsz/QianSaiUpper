@@ -33,28 +33,28 @@ private:
     void ImplBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
     void ImplSetDirection(Direction dir)
     {
-        this->Comm.WriteCommand(0x36);
-        if (dir == Direction::Vertical)        { this->Comm.WriteData8(0x00); }
-        else if (dir == Direction::Horizontal)     { this->Comm.WriteData8(0x60); }
-        else if (dir == Direction::HorizontalFlip) { this->Comm.WriteData8(0xA0); }
-        else                                       { this->Comm.WriteData8(0xC0); }
+        this->mComm.WriteCommand(0x36);
+        if (dir == Direction::Vertical)        { this->mComm.WriteData8(0x00); }
+        else if (dir == Direction::Horizontal)     { this->mComm.WriteData8(0x60); }
+        else if (dir == Direction::HorizontalFlip) { this->mComm.WriteData8(0xA0); }
+        else                                       { this->mComm.WriteData8(0xC0); }
     }
 
     void ImplSetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
     {
-        this->Comm.CsLow();
+        this->mComm.CsLow();
         // 列地址
-        this->Comm.WriteCommand(0x2A);
-        this->Comm.WriteData16(xs);
-        this->Comm.WriteData16(xe);
+        this->mComm.WriteCommand(0x2A);
+        this->mComm.WriteData16(xs);
+        this->mComm.WriteData16(xe);
 
         // 行地址
-        this->Comm.WriteCommand(0x2B);
-        this->Comm.WriteData16(ys);
-        this->Comm.WriteData16(ye);
+        this->mComm.WriteCommand(0x2B);
+        this->mComm.WriteData16(ys);
+        this->mComm.WriteData16(ye);
 
         // 写显存（CS=0 后保持，由调用方负责释放）
-        this->Comm.WriteCommand(0x2C);
+        this->mComm.WriteCommand(0x2C);
     }
     // ============================================================
     // CRTP 入口 — 屏幕初始化
@@ -64,11 +64,11 @@ private:
     // ============================================================
     void ImplInit()
     {
-        this->Comm.Init();
-        this->Comm.DelayMs(10);     // 等待 LCD 上电复位
-        this->Comm.CsLow();         // 使能片选
+        this->mComm.Init();
+        this->mComm.DelayMs(10);     // 等待 LCD 上电复位
+        this->mComm.CsLow();         // 使能片选
         this->writeRegisters();            // 写入 ST7789 寄存器序列
-        this->Comm.CsHigh();
+        this->mComm.CsHigh();
         this->SetDirection(Direction::Vertical);
         this->SetBackColor(Colors::Black);
         this->SetColor(Colors::White);
@@ -81,13 +81,13 @@ private:
     // ============================================================
     void ImplDrawPoint(uint16_t x, uint16_t y, uint32_t c888)
     {
-        if (x >= this->Width || y >= this->Height)
+        if (x >= this->mWidth || y >= this->mHeight)
         {
             return;
         }
         this->SetAddr(x, y, x, y);    // CS=0，设地址窗口
-        this->Comm.WriteData16(Base::c888To565(c888));  // 写颜色
-        this->Comm.CsHigh();           // CS=1，释放片选
+        this->mComm.WriteData16(Base::c888To565(c888));  // 写颜色
+        this->mComm.CsHigh();           // CS=1，释放片选
     }
 
     // ============================================================
@@ -142,15 +142,15 @@ private:
     {
         for (const auto &[cmd, data] : kRegs)
         {
-            this->Comm.WriteCommand(cmd);
+            this->mComm.WriteCommand(cmd);
             for (auto d : data)
             {
-                this->Comm.WriteData8(d);
+                this->mComm.WriteData8(d);
             }
             // 退出休眠指令需要等待电源稳定
             if (cmd == 0x11)
             {
-                this->Comm.DelayMs(120);
+                this->mComm.DelayMs(120);
             }
         }
     }

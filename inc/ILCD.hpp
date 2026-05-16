@@ -113,7 +113,7 @@ class ILCD
 public:
     // 构造：绑定通信层、设置屏幕尺寸
     explicit ILCD(Transport &comm, uint16_t w = 240, uint16_t h = 240)
-        : Comm(comm), Width(w), Height(h)
+        : mComm(comm), mWidth(w), mHeight(h)
     {
     }
 
@@ -136,25 +136,25 @@ public:
     // 设置画笔颜色（RGB888 格式）
     constexpr void SetColor(uint32_t c) noexcept
     {
-        Color = c;
+        mColor = c;
     }
 
     // 设置背景颜色（RGB888 格式）
     constexpr void SetBackColor(uint32_t c) noexcept
     {
-        BackColor = c;
+        mBackColor = c;
     }
 
     // 设置数字填充模式
     constexpr void SetNumFillMode(NumFillMode m) noexcept
     {
-        NumFillMode = m;
+        mNumFillMode = m;
     }
 
     // 设置屏幕显示方向（CRTP 委托给子类）
     void SetDirection(Direction dir) noexcept
     {
-        DisplayDir = dir;
+        mDisplayDir = dir;
         static_cast<Driver*>(this)->ImplSetDirection(dir);
     }
 
@@ -164,23 +164,23 @@ public:
 
 // ---------- 属性读取 ----------
 
-    constexpr uint32_t Color()     const noexcept { return Color; }
-    constexpr uint32_t BackColor() const noexcept { return BackColor; }
-    constexpr uint16_t Width()     const noexcept { return Width; }
-    constexpr uint16_t Height()    const noexcept { return Height; }
+    constexpr uint32_t Color()     const noexcept { return mColor; }
+    constexpr uint32_t BackColor() const noexcept { return mBackColor; }
+    constexpr uint16_t Width()     const noexcept { return mWidth; }
+    constexpr uint16_t Height()    const noexcept { return mHeight; }
 
     // ---------- 字体设置 ----------
 
     // 设置 ASCII 字体
     constexpr void SetAsciiFont(const Font *f) noexcept
     {
-        AsciiFont = f;
+        mAsciiFont = f;
     }
 
     // 设置中文字体（同时包含 ASCII）
     constexpr void SetTextFont(const Font *f) noexcept
     {
-        ChFont = f;
+        mChFont = f;
     }
 
     // ---------- 清屏 ----------
@@ -188,7 +188,7 @@ public:
     // 全屏填充背景色
     void Clear()
     {
-        fillRectImpl(0, 0, Width, Height, BackColor);
+        fillRectImpl(0, 0, mWidth, mHeight, mBackColor);
     }
 
     // 局部矩形区域清屏
@@ -214,7 +214,7 @@ public:
     // 显示 ASCII 字符串（支持 \n 换行）
     void DrawString(uint16_t x, uint16_t y, const char *s)
     {
-        if (!s || !AsciiFont)
+        if (!s || !mAsciiFont)
         {
             return;
         }
@@ -239,7 +239,7 @@ public:
     // 显示单个汉字（GB2312 双字节编码）
     void DrawChinese(uint16_t x, uint16_t y, const char *text)
     {
-        if (!text || !ChFont)
+        if (!text || !mChFont)
         {
             return;
         }
@@ -261,7 +261,7 @@ public:
     // 显示中英文混排字符串
     void DrawText(uint16_t x, uint16_t y, const char *t)
     {
-        if (!t || !ChFont)
+        if (!t || !mChFont)
         {
             return;
         }
@@ -294,7 +294,7 @@ public:
     // 显示整数（支持负数、指定宽度、零填充或空格填充）
     void DrawNumber(uint16_t x, uint16_t y, int32_t num, uint8_t len)
     {
-        if (!AsciiFont)
+        if (!mAsciiFont)
         {
             return;
         }
@@ -331,7 +331,7 @@ public:
     // 显示小数（指定总宽度和小数位数）
     void DrawDecimal(uint16_t x, uint16_t y, double v, uint8_t len, uint8_t decs)
     {
-        if (!AsciiFont)
+        if (!mAsciiFont)
         {
             return;
         }
@@ -557,14 +557,14 @@ public:
                     {
                         break;
                     }
-                    Buf.data[bc++] = (byte & (1u << bit)) ? c888To565(Color) : c888To565(BackColor);
+                    mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(Color) : c888To565(BackColor);
                 }
             }
             // 缓冲区满或到最后一行：批量写入显存
             if (bc >= bh * w)
             {
                 SetAddr(x, ya, x + w - 1, ya + bh - 1);
-                Comm.writeBulk(Buf.data, w * bh);
+                mComm.WriteBulk(mBuf.data, w * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -573,23 +573,23 @@ public:
         if (bc > 0)
         {
             SetAddr(x, ya, x + w - 1, row + y);
-            Comm.writeBulk(Buf.data, bc);
+            mComm.WriteBulk(mBuf.data, bc);
         }
     }
 
 protected:
-    Transport              &Comm;    // 通信传输层引用
-    BufferPolicy<BufferSz>  Buf;     // 像素数据缓冲区
-    uint16_t  Width;                 // 屏幕像素宽度
-    uint16_t  Height;                // 屏幕像素高度
-    uint32_t  Color      = Colors::White;  // 当前画笔颜色
-    uint32_t  BackColor  = Colors::Black;  // 当前背景颜色
-    Direction DisplayDir = Direction::Vertical;   // 当前显示方向
-    NumFillMode NumFillMode = NumFillMode::FillZero; // 数字填充模式
-    uint8_t   XOffset    = 0;        // X 坐标偏移（设显示方向时使用）
-    uint8_t   YOffset    = 0;        // Y 坐标偏移（设显示方向时使用）
-    const Font *AsciiFont = nullptr; // 当前 ASCII 字体
-    const Font *ChFont    = nullptr; // 当前中文字体
+    Transport              &mComm;    // 通信传输层引用
+    BufferPolicy<BufferSz>  mBuf;     // 像素数据缓冲区
+    uint16_t  mWidth;                 // 屏幕像素宽度
+    uint16_t  mHeight;                // 屏幕像素高度
+    uint32_t  mColor      = Colors::White;  // 当前画笔颜色
+    uint32_t  mBackColor  = Colors::Black;  // 当前背景颜色
+    Direction mDisplayDir = Direction::Vertical;   // 当前显示方向
+    NumFillMode mmNumFillMode = NumFillMode::FillZero; // 数字填充模式
+    uint8_t   mXOffset    = 0;        // X 坐标偏移（设显示方向时使用）
+    uint8_t   mYOffset    = 0;        // Y 坐标偏移（设显示方向时使用）
+    const Font *mAsciiFont = nullptr; // 当前 ASCII 字体
+    const Font *mChFont    = nullptr; // 当前中文字体
 
     // ============================================================
     // 受保护的辅助方法（子类可调用）
@@ -630,7 +630,7 @@ protected:
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = 7 - (col % 8);
                 // bit=1 用画笔色，bit=0 用背景色
-                Buf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
+                mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
                                     ? c888To565(Color)
                                     : c888To565(BackColor);
             }
@@ -638,7 +638,7 @@ protected:
             if (bc >= bh * f.width)
             {
                 SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
-                Comm.writeBulk(Buf.data, f.width * bh);
+                mComm.WriteBulk(mBuf.data, f.width * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -647,14 +647,14 @@ protected:
         if (bc > 0)
         {
             SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            Comm.writeBulk(Buf.data, bc);
+            mComm.WriteBulk(mBuf.data, bc);
         }
     }
 
     // 矩形区域填充（被 clear/clearRect/fillRect/drawLineH/drawLineV 共用）
     void fillRectImpl(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint32_t color888)
     {
-        if (x + w > Width || y + h > Height)
+        if (x + w > mmWidth || y + h > mHeight)
         {
             return;
         }
@@ -663,11 +663,11 @@ protected:
         uint16_t total = w * h;
         for (uint16_t i = 0; i < total; ++i)
         {
-            Buf.data[i % BufferSz] = c;
+            mBuf.data[i % BufferSz] = c;
             if ((i + 1) % BufferSz == 0 || i == total - 1)
             {
                 uint16_t chunk = ((i + 1) % BufferSz == 0) ? BufferSz : ((i % BufferSz) + 1);
-                Comm.writeBulk(Buf.data, chunk);
+                mComm.WriteBulk(mBuf.data, chunk);
             }
         }
     }
