@@ -6,7 +6,8 @@
 #include <cstdarg>
 #include <cstdio>
 #include <functional>
-#include <print>\n#include <format>
+#include <print>
+#include <format>
 
 namespace CTLIB
 {
@@ -81,7 +82,7 @@ public:
     /* ============================================================ */
     /* Print - C++23 std::print style (zero-cost format + UART TX)  */
     /* Enabled when __cpp_lib_print >= 202207L (C++23 <print>)       */
-    /* Falls back to Printf (vsnprintf) on C++11..C++20              */
+    /* Falls back to Print (vsnprintf) on C++11..C++20              */
     /* ============================================================ */
 
 #if __cpp_lib_print >= 202207L  /* C++23: std::print available */
@@ -117,7 +118,7 @@ public:
 #else  /* C++11..C++20 fallback: vsnprintf */
 
     /* C++11: variadic printf via vsnprintf, max kBufSize*2 bytes */
-    void Printf(const char *fmt, ...)
+    void Print(const char *fmt, ...)
     {
         auto &buf = this->mBuf;
         va_list args;
