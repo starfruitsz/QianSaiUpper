@@ -106,7 +106,7 @@ public:
         CbCsLow();
         for (uint16_t i = 0; i < sz; ++i)
         {
-            mHspi->Instance->DR = this->mBuf.data[i];
+            mHspi->Instance->DR = (*this).mBuf[i];
             while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
         }
         while (mHspi->Instance->SR & SPI_SR_BSY) {}

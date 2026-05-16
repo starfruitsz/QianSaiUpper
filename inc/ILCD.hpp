@@ -579,7 +579,7 @@ public:
                     {
                         break;
                     }
-                    mComm.mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
+                    mComm.mBuf[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
                 }
             }
             /* 缓冲区满或到最后一行：批量写入显存 */
@@ -651,7 +651,7 @@ protected:
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = col % 8;  /* LSB-first, matching PCtoLCD C51 format */
                 /* bit=1 用画笔色，bit=0 用背景色 */
-                mComm.mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
+                mComm.mBuf[bc++] = (f.table[byteIdx] & (1u << bitPos))
                                     ? c888To565(mColor)
                                     : c888To565(mBackColor);
             }
@@ -684,7 +684,7 @@ protected:
         uint16_t total = w * h;
         for (uint16_t i = 0; i < total; ++i)
         {
-            mComm.mBuf.data[i % Transport::kBufSize] = c;
+            mComm.mBuf[i % Transport::kBufSize] = c;
             if ((i + 1) % Transport::kBufSize == 0 || i == total - 1)
             {
                 uint16_t chunk = ((i + 1) % Transport::kBufSize == 0) ? Transport::kBufSize : ((i % Transport::kBufSize) + 1);

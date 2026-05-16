@@ -23,8 +23,18 @@ template <uint16_t Size = 1024>
 struct BufferPolicy
 {
     static constexpr uint16_t size = Size;  /* C++11: constexpr */
-    uint16_t data[Size] = {};               /* C++11: brace init */
-    uint16_t pos = 0;                       /* current write cursor */
+
+    /* Access element at index, auto-advance cursor */
+    uint16_t& operator[](uint16_t idx) { return mData[idx]; }
+    const uint16_t& operator[](uint16_t idx) const { return mData[idx]; }
+
+    /* Reset write cursor to zero */
+    void Reset() { mPos = 0; }
+
+    uint16_t  mPos = 0;              /* current write cursor */
+
+private:
+    uint16_t  mData[Size] = {};      /* C++11: brace init */
 };
 
 /* ============================================================ */
@@ -77,7 +87,7 @@ public:
     {
         auto &buf = this->mBuf;
         auto result = std::format_to_n(
-            reinterpret_cast<char*>(buf.data),
+            reinterpret_cast<char*>(&buf[0]),
             kBufSize * 2 - 1,
             fmt,
             std::forward<Args>(args)...
@@ -85,7 +95,7 @@ public:
         uint16_t n = static_cast<uint16_t>(result.size);
         for (uint16_t i = 0; i < n; ++i)
         {
-            WriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
+            WriteData8(reinterpret_cast<uint8_t*>(&buf[0])[i]);
         }
     }
 
@@ -106,14 +116,14 @@ public:
         auto &buf = this->mBuf;
         va_list args;
         va_start(args, fmt);
-        int len = vsnprintf(reinterpret_cast<char*>(buf.data), kBufSize * 2, fmt, args);
+        int len = vsnprintf(reinterpret_cast<char*>(&buf[0]), kBufSize * 2, fmt, args);
         va_end(args);
 
         if (len < 0) return;
         uint16_t n = static_cast<uint16_t>(len < static_cast<int>(kBufSize * 2) ? len : kBufSize * 2 - 1);
         for (uint16_t i = 0; i < n; ++i)
         {
-            WriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
+            WriteData8(reinterpret_cast<uint8_t*>(&buf[0])[i]);
         }
     }
 
