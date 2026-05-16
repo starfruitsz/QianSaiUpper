@@ -6,29 +6,29 @@
 namespace CTLIB
 {
 
-// Í¨ÐÅ´«Êä²ã CRTP ½Ó¿Ú
+// Í¨ï¿½Å´ï¿½ï¿½ï¿½ï¿½ CRTP ï¿½Ó¿ï¿½
 
 template <typename Impl>
 class ICommunication
 {
 public:
-    inline void init()            { impl().implInit(); }
-    inline void writeCommand(uint8_t c) { impl().implWriteCommand(c); }
-    inline void writeData8(uint8_t d)   { impl().implWriteData8(d); }
-    inline void writeData16(uint16_t d) { impl().implWriteData16(d); }
-    inline void writeBulk(uint16_t *b, uint16_t s) { impl().implWriteBulk(b, s); }
-    inline void csLow()       { impl().implCsLow(); }
-    inline void csHigh()      { impl().implCsHigh(); }
-    inline void dcCommand()   { impl().implDcCommand(); }
-    inline void dcData()      { impl().implDcData(); }
-    inline void delayMs(uint32_t ms) { impl().implDelayMs(ms); }
+    inline void Init()            { Impl().ImplInit(); }
+    inline void WriteCommand(uint8_t c) { Impl().ImplWriteCommand(c); }
+    inline void WriteData8(uint8_t d)   { Impl().ImplWriteData8(d); }
+    inline void WriteData16(uint16_t d) { Impl().ImplWriteData16(d); }
+    inline void WriteBulk(uint16_t *b, uint16_t s) { Impl().ImplWriteBulk(b, s); }
+    inline void CsLow()       { Impl().ImplCsLow(); }
+    inline void CsHigh()      { Impl().ImplCsHigh(); }
+    inline void DcCommand()   { Impl().ImplDcCommand(); }
+    inline void DcData()      { Impl().ImplDcData(); }
+    inline void DelayMs(uint32_t ms) { Impl().ImplDelayMs(ms); }
 
 protected:
     ICommunication() = default;
     ~ICommunication() = default;
 
 private:
-    Impl &impl() { return static_cast<Impl&>(*this); }
+    Impl &Impl() { return static_cast<Impl&>(*this); }
 };
 
 } // namespace CTLIB

@@ -29,32 +29,32 @@ public:
     }
 
 private:
-    void implBacklightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
-    void implBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
-    void implSetDirection(Direction dir)
+    void ImplBacklightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
+    void ImplBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
+    void ImplSetDirection(Direction dir)
     {
-        this->mComm.writeCommand(0x36);
-        if (dir == Direction::Vertical)        { this->mComm.writeData8(0x00); }
-        else if (dir == Direction::Horizontal)     { this->mComm.writeData8(0x60); }
-        else if (dir == Direction::HorizontalFlip) { this->mComm.writeData8(0xA0); }
-        else                                       { this->mComm.writeData8(0xC0); }
+        this->Comm.WriteCommand(0x36);
+        if (dir == Direction::Vertical)        { this->Comm.WriteData8(0x00); }
+        else if (dir == Direction::Horizontal)     { this->Comm.WriteData8(0x60); }
+        else if (dir == Direction::HorizontalFlip) { this->Comm.WriteData8(0xA0); }
+        else                                       { this->Comm.WriteData8(0xC0); }
     }
 
-    void implSetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
+    void ImplSetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
     {
-        this->mComm.csLow();
+        this->Comm.CsLow();
         // 列地址
-        this->mComm.writeCommand(0x2A);
-        this->mComm.writeData16(xs);
-        this->mComm.writeData16(xe);
+        this->Comm.WriteCommand(0x2A);
+        this->Comm.WriteData16(xs);
+        this->Comm.WriteData16(xe);
 
         // 行地址
-        this->mComm.writeCommand(0x2B);
-        this->mComm.writeData16(ys);
-        this->mComm.writeData16(ye);
+        this->Comm.WriteCommand(0x2B);
+        this->Comm.WriteData16(ys);
+        this->Comm.WriteData16(ye);
 
         // 写显存（CS=0 后保持，由调用方负责释放）
-        this->mComm.writeCommand(0x2C);
+        this->Comm.WriteCommand(0x2C);
     }
     // ============================================================
     // CRTP 入口 — 屏幕初始化
@@ -62,32 +62,32 @@ private:
     // 2. 发送 ST7789 寄存器配置序列
     // 3. 设置默认方向、颜色、清屏、开背光
     // ============================================================
-    void implInit()
+    void ImplInit()
     {
-        this->mComm.init();
-        this->mComm.delayMs(10);     // 等待 LCD 上电复位
-        this->mComm.csLow();         // 使能片选
+        this->Comm.Init();
+        this->Comm.DelayMs(10);     // 等待 LCD 上电复位
+        this->Comm.CsLow();         // 使能片选
         this->writeRegisters();            // 写入 ST7789 寄存器序列
-        this->mComm.csHigh();
-        this->setDirection(Direction::Vertical);
-        this->setBackColor(Colors::Black);
-        this->setColor(Colors::White);
-        this->clear();               // 全屏清屏
-        this->backlightOn();   // 开启背光
+        this->Comm.CsHigh();
+        this->SetDirection(Direction::Vertical);
+        this->SetBackColor(Colors::Black);
+        this->SetColor(Colors::White);
+        this->Clear();               // 全屏清屏
+        this->BacklightOn();   // 开启背光
     }
 
     // ============================================================
     // CRTP 入口 — 绘制单个像素点
     // ============================================================
-    void implDrawPoint(uint16_t x, uint16_t y, uint32_t c888)
+    void ImplDrawPoint(uint16_t x, uint16_t y, uint32_t c888)
     {
-        if (x >= this->mWidth || y >= this->mHeight)
+        if (x >= this->Width || y >= this->Height)
         {
             return;
         }
-        this->setAddr(x, y, x, y);    // CS=0，设地址窗口
-        this->mComm.writeData16(Base::c888To565(c888));  // 写颜色
-        this->mComm.csHigh();           // CS=1，释放片选
+        this->SetAddr(x, y, x, y);    // CS=0，设地址窗口
+        this->Comm.WriteData16(Base::c888To565(c888));  // 写颜色
+        this->Comm.CsHigh();           // CS=1，释放片选
     }
 
     // ============================================================
@@ -142,15 +142,15 @@ private:
     {
         for (const auto &[cmd, data] : kRegs)
         {
-            this->mComm.writeCommand(cmd);
+            this->Comm.WriteCommand(cmd);
             for (auto d : data)
             {
-                this->mComm.writeData8(d);
+                this->Comm.WriteData8(d);
             }
             // 退出休眠指令需要等待电源稳定
             if (cmd == 0x11)
             {
-                this->mComm.delayMs(120);
+                this->Comm.DelayMs(120);
             }
         }
     }

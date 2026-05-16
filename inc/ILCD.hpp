@@ -113,108 +113,108 @@ class ILCD
 public:
     // 构造：绑定通信层、设置屏幕尺寸
     explicit ILCD(Transport &comm, uint16_t w = 240, uint16_t h = 240)
-        : mComm(comm), mWidth(w), mHeight(h)
+        : Comm(comm), Width(w), Height(h)
     {
     }
 
     // ---------- 驱动层入口（通过 CRTP 委托给子类）----------
 
     // 屏幕初始化（含寄存器配置）
-    void init()
+    void Init()
     {
-        static_cast<Driver*>(this)->implInit();
+        static_cast<Driver*>(this)->ImplInit();
     }
 
     // 绘制单个像素点
-    void drawPoint(uint16_t x, uint16_t y, uint32_t c888)
+    void DrawPoint(uint16_t x, uint16_t y, uint32_t c888)
     {
-        static_cast<Driver*>(this)->implDrawPoint(x, y, c888);
+        static_cast<Driver*>(this)->ImplDrawPoint(x, y, c888);
     }
 
     // ---------- 属性设置 ----------
 
     // 设置画笔颜色（RGB888 格式）
-    constexpr void setColor(uint32_t c) noexcept
+    constexpr void SetColor(uint32_t c) noexcept
     {
-        mColor = c;
+        Color = c;
     }
 
     // 设置背景颜色（RGB888 格式）
-    constexpr void setBackColor(uint32_t c) noexcept
+    constexpr void SetBackColor(uint32_t c) noexcept
     {
-        mBackColor = c;
+        BackColor = c;
     }
 
     // 设置数字填充模式
-    constexpr void setNumFillMode(NumFillMode m) noexcept
+    constexpr void SetNumFillMode(NumFillMode m) noexcept
     {
-        mNumFillMode = m;
+        NumFillMode = m;
     }
 
     // 设置屏幕显示方向（CRTP 委托给子类）
-    void setDirection(Direction dir) noexcept
+    void SetDirection(Direction dir) noexcept
     {
-        mDirection = dir;
-        static_cast<Driver*>(this)->implSetDirection(dir);
+        DisplayDir = dir;
+        static_cast<Driver*>(this)->ImplSetDirection(dir);
     }
 
         // 背光控制（CRTP 委托给子类实现）
-    void backlightOn()  { static_cast<Driver*>(this)->implBacklightOn(); }
-    void backlightOff() { static_cast<Driver*>(this)->implBacklightOff(); }
+    void BacklightOn()  { static_cast<Driver*>(this)->ImplBacklightOn(); }
+    void BacklightOff() { static_cast<Driver*>(this)->ImplBacklightOff(); }
 
 // ---------- 属性读取 ----------
 
-    constexpr uint32_t color()     const noexcept { return mColor; }
-    constexpr uint32_t backColor() const noexcept { return mBackColor; }
-    constexpr uint16_t width()     const noexcept { return mWidth; }
-    constexpr uint16_t height()    const noexcept { return mHeight; }
+    constexpr uint32_t Color()     const noexcept { return Color; }
+    constexpr uint32_t BackColor() const noexcept { return BackColor; }
+    constexpr uint16_t Width()     const noexcept { return Width; }
+    constexpr uint16_t Height()    const noexcept { return Height; }
 
     // ---------- 字体设置 ----------
 
     // 设置 ASCII 字体
-    constexpr void setAsciiFont(const Font *f) noexcept
+    constexpr void SetAsciiFont(const Font *f) noexcept
     {
-        mAsciiFont = f;
+        AsciiFont = f;
     }
 
     // 设置中文字体（同时包含 ASCII）
-    constexpr void setTextFont(const Font *f) noexcept
+    constexpr void SetTextFont(const Font *f) noexcept
     {
-        mChFont = f;
+        ChFont = f;
     }
 
     // ---------- 清屏 ----------
 
     // 全屏填充背景色
-    void clear()
+    void Clear()
     {
-        fillRectImpl(0, 0, mWidth, mHeight, mBackColor);
+        fillRectImpl(0, 0, Width, Height, BackColor);
     }
 
     // 局部矩形区域清屏
-    void clearRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+    void ClearRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
-        fillRectImpl(x, y, w, h, mBackColor);
+        fillRectImpl(x, y, w, h, BackColor);
     }
 
     // ---------- ASCII 字符绘制 ----------
 
     // 显示单个 ASCII 字符
-    void drawChar(uint16_t x, uint16_t y, uint8_t c)
+    void DrawChar(uint16_t x, uint16_t y, uint8_t c)
     {
-        if (!mAsciiFont || c < ' ' || c > '~')
+        if (!AsciiFont || c < ' ' || c > '~')
         {
             return;
         }
-        auto &f = *mAsciiFont;
+        auto &f = *AsciiFont;
         // 根据 ASCII 码计算在字模表中的偏移
         drawGlyphFromFont(x, y, c - ' ', f);
     }
 
     // 显示 ASCII 字符串（支持 \n 换行）
-    void drawString(uint16_t x, uint16_t y, const char *s)
+    void DrawString(uint16_t x, uint16_t y, const char *s)
     {
-        if (!s || !mAsciiFont)
+        if (!s || !AsciiFont)
         {
             return;
         }
@@ -224,12 +224,12 @@ public:
             if (*s == '\n')
             {
                 cx = x;
-                y += mAsciiFont->height;
+                y += AsciiFont->height;
             }
             else
             {
-                drawChar(cx, y, static_cast<uint8_t>(*s));
-                cx += mAsciiFont->width;
+                DrawChar(cx, y, static_cast<uint8_t>(*s));
+                cx += AsciiFont->width;
             }
         }
     }
@@ -237,13 +237,13 @@ public:
     // ---------- 中文绘制 ----------
 
     // 显示单个汉字（GB2312 双字节编码）
-    void drawChinese(uint16_t x, uint16_t y, const char *text)
+    void DrawChinese(uint16_t x, uint16_t y, const char *text)
     {
-        if (!text || !mChFont)
+        if (!text || !ChFont)
         {
             return;
         }
-        const auto &f = *mChFont;
+        const auto &f = *ChFont;
         uint8_t hi = static_cast<uint8_t>(text[0]);
         uint8_t lo = static_cast<uint8_t>(text[1]);
         // 遍历字库二维表，匹配汉字索引
@@ -259,9 +259,9 @@ public:
     }
 
     // 显示中英文混排字符串
-    void drawText(uint16_t x, uint16_t y, const char *t)
+    void DrawText(uint16_t x, uint16_t y, const char *t)
     {
-        if (!t || !mChFont)
+        if (!t || !ChFont)
         {
             return;
         }
@@ -269,18 +269,18 @@ public:
         while (*t)
         {
             uint8_t c = static_cast<uint8_t>(*t);
-            if (c >= 0xA1 && mChFont)
+            if (c >= 0xA1 && ChFont)
             {
                 // 高字节 >= 0xA1 判定为中文
-                drawChinese(cx, y, t);
+                DrawChinese(cx, y, t);
                 t += 2;
-                cx += mChFont->width;
+                cx += ChFont->width;
             }
-            else if (c >= ' ' && c <= '~' && mAsciiFont)
+            else if (c >= ' ' && c <= '~' && AsciiFont)
             {
-                drawChar(cx, y, c);
+                DrawChar(cx, y, c);
                 ++t;
-                cx += mAsciiFont->width;
+                cx += AsciiFont->width;
             }
             else
             {
@@ -292,14 +292,14 @@ public:
     // ---------- 数字绘制 ----------
 
     // 显示整数（支持负数、指定宽度、零填充或空格填充）
-    void drawNumber(uint16_t x, uint16_t y, int32_t num, uint8_t len)
+    void DrawNumber(uint16_t x, uint16_t y, int32_t num, uint8_t len)
     {
-        if (!mAsciiFont)
+        if (!AsciiFont)
         {
             return;
         }
         char buf[16] = {};
-        if (mNumFillMode == NumFillMode::FillZero)
+        if (NumFillMode == NumFillMode::FillZero)
         {
             // 右对齐，零填充
             bool neg = num < 0;
@@ -325,37 +325,37 @@ public:
             // 左对齐，空格填充
             snprintf(buf, sizeof(buf), "%*d", len, static_cast<int>(num));
         }
-        drawString(x, y, buf);
+        DrawString(x, y, buf);
     }
 
     // 显示小数（指定总宽度和小数位数）
-    void drawDecimal(uint16_t x, uint16_t y, double v, uint8_t len, uint8_t decs)
+    void DrawDecimal(uint16_t x, uint16_t y, double v, uint8_t len, uint8_t decs)
     {
-        if (!mAsciiFont)
+        if (!AsciiFont)
         {
             return;
         }
         char buf[32] = {};
         snprintf(buf, sizeof(buf), "%*.*f", len, decs, v);
-        drawString(x, y, buf);
+        DrawString(x, y, buf);
     }
 
     // ---------- 2D 基本图元 ----------
 
     // 水平线（快速填充一行）
-    void drawLineH(uint16_t x, uint16_t y, uint16_t w)
+    void DrawLineH(uint16_t x, uint16_t y, uint16_t w)
     {
-        fillRectImpl(x, y, w, 1, mColor);
+        fillRectImpl(x, y, w, 1, Color);
     }
 
     // 垂直线（快速填充一列）
-    void drawLineV(uint16_t x, uint16_t y, uint16_t h)
+    void DrawLineV(uint16_t x, uint16_t y, uint16_t h)
     {
-        fillRectImpl(x, y, 1, h, mColor);
+        fillRectImpl(x, y, 1, h, Color);
     }
 
     // 任意两点间画线（Bresenham 算法）
-    void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
+    void DrawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
     {
         int dx = static_cast<int>(x1) - static_cast<int>(x0);
         int dy = static_cast<int>(y1) - static_cast<int>(y0);
@@ -377,7 +377,7 @@ public:
             uint16_t y = y0;
             for (uint16_t x = x0; x <= x1; ++x)
             {
-                drawPoint(x, y, mColor);
+                DrawPoint(x, y, Color);
                 err -= ady;
                 if (err < 0)
                 {
@@ -399,7 +399,7 @@ public:
             uint16_t x = x0;
             for (uint16_t y = y0; y <= y1; ++y)
             {
-                drawPoint(x, y, mColor);
+                DrawPoint(x, y, Color);
                 err -= adx;
                 if (err < 0)
                 {
@@ -411,16 +411,16 @@ public:
     }
 
     // 空心矩形
-    void drawRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+    void DrawRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
-        drawLineH(x, y, w);
-        drawLineH(x, y + h - 1, w);
-        drawLineV(x, y, h);
-        drawLineV(x + w - 1, y, h);
+        DrawLineH(x, y, w);
+        DrawLineH(x, y + h - 1, w);
+        DrawLineV(x, y, h);
+        DrawLineV(x + w - 1, y, h);
     }
 
     // 空心圆（中点画圆算法）
-    void drawCircle(uint16_t x, uint16_t y, uint16_t r)
+    void DrawCircle(uint16_t x, uint16_t y, uint16_t r)
     {
         int cx = 0;
         int cy = static_cast<int>(r);
@@ -428,14 +428,14 @@ public:
         while (cy >= cx)
         {
             // 利用八对称性一次画八个点
-            drawPoint(x + cx, y + cy, mColor);
-            drawPoint(x - cx, y + cy, mColor);
-            drawPoint(x + cx, y - cy, mColor);
-            drawPoint(x - cx, y - cy, mColor);
-            drawPoint(x + cy, y + cx, mColor);
-            drawPoint(x - cy, y + cx, mColor);
-            drawPoint(x + cy, y - cx, mColor);
-            drawPoint(x - cy, y - cx, mColor);
+            DrawPoint(x + cx, y + cy, Color);
+            DrawPoint(x - cx, y + cy, Color);
+            DrawPoint(x + cx, y - cy, Color);
+            DrawPoint(x - cx, y - cy, Color);
+            DrawPoint(x + cy, y + cx, Color);
+            DrawPoint(x - cy, y + cx, Color);
+            DrawPoint(x + cy, y - cx, Color);
+            DrawPoint(x - cy, y - cx, Color);
             if (D < 0)
             {
                 D += (cx << 2) + 6;
@@ -450,7 +450,7 @@ public:
     }
 
     // 空心椭圆
-    void drawEllipse(int x, int y, int r1, int r2)
+    void DrawEllipse(int x, int y, int r1, int r2)
     {
         int cx = 0, cy = r2;
         int r1sq = r1 * r1, r2sq = r2 * r2;
@@ -459,10 +459,10 @@ public:
         // 区域 1：X 方向增长快
         while (r2sq * cx <= r1sq * cy)
         {
-            drawPoint(x + cx, y + cy, mColor);
-            drawPoint(x - cx, y + cy, mColor);
-            drawPoint(x + cx, y - cy, mColor);
-            drawPoint(x - cx, y - cy, mColor);
+            DrawPoint(x + cx, y + cy, Color);
+            DrawPoint(x - cx, y + cy, Color);
+            DrawPoint(x + cx, y - cy, Color);
+            DrawPoint(x - cx, y - cy, Color);
             if (d < 0)
             {
                 d += r2sq * (2 * cx + 3);
@@ -479,10 +479,10 @@ public:
         d = static_cast<int>(r2sq * (cx + 0.5) * (cx + 0.5) + r1sq * (cy - 1) * (cy - 1) - r1sq * r2sq);
         while (cy >= 0)
         {
-            drawPoint(x + cx, y + cy, mColor);
-            drawPoint(x - cx, y + cy, mColor);
-            drawPoint(x + cx, y - cy, mColor);
-            drawPoint(x - cx, y - cy, mColor);
+            DrawPoint(x + cx, y + cy, Color);
+            DrawPoint(x - cx, y + cy, Color);
+            DrawPoint(x + cx, y - cy, Color);
+            DrawPoint(x - cx, y - cy, Color);
             if (d > 0)
             {
                 d += r1sq * (-2 * cy + 3);
@@ -499,23 +499,23 @@ public:
     // ---------- 区域填充 ----------
 
     // 实心矩形
-    void fillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+    void FillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
-        fillRectImpl(x, y, w, h, mColor);
+        fillRectImpl(x, y, w, h, Color);
     }
 
     // 实心圆（水平线填充法）
-    void fillCircle(uint16_t x, uint16_t y, uint16_t r)
+    void FillCircle(uint16_t x, uint16_t y, uint16_t r)
     {
         int cx = 0, cy = static_cast<int>(r);
         int D = 3 - 2 * static_cast<int>(r);
         while (cy >= cx)
         {
             // 用四条水平线填充圆的带状区域
-            drawLineH(x - cy, y - cx, 2 * cy);
-            drawLineH(x - cy, y + cx, 2 * cy);
-            drawLineH(x - cx, y - cy, 2 * cx);
-            drawLineH(x - cx, y + cy, 2 * cx);
+            DrawLineH(x - cy, y - cx, 2 * cy);
+            DrawLineH(x - cy, y + cx, 2 * cy);
+            DrawLineH(x - cx, y - cy, 2 * cx);
+            DrawLineH(x - cx, y + cy, 2 * cx);
             if (D < 0)
             {
                 D += (cx << 2) + 6;
@@ -531,7 +531,7 @@ public:
 
     // ---------- 单色图片绘制 ----------
 
-    void drawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *p)
+    void DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *p)
     {
         if (!p)
         {
@@ -557,14 +557,14 @@ public:
                     {
                         break;
                     }
-                    mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
+                    Buf.data[bc++] = (byte & (1u << bit)) ? c888To565(Color) : c888To565(BackColor);
                 }
             }
             // 缓冲区满或到最后一行：批量写入显存
             if (bc >= bh * w)
             {
-                setAddr(x, ya, x + w - 1, ya + bh - 1);
-                mComm.writeBulk(mBuf.data, w * bh);
+                SetAddr(x, ya, x + w - 1, ya + bh - 1);
+                Comm.writeBulk(Buf.data, w * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -572,24 +572,24 @@ public:
         // 剩余不足一行
         if (bc > 0)
         {
-            setAddr(x, ya, x + w - 1, row + y);
-            mComm.writeBulk(mBuf.data, bc);
+            SetAddr(x, ya, x + w - 1, row + y);
+            Comm.writeBulk(Buf.data, bc);
         }
     }
 
 protected:
-    Transport              &mComm;    // 通信传输层引用
-    BufferPolicy<BufferSz>  mBuf;     // 像素数据缓冲区
-    uint16_t  mWidth;                 // 屏幕像素宽度
-    uint16_t  mHeight;                // 屏幕像素高度
-    uint32_t  mColor      = Colors::White;  // 当前画笔颜色
-    uint32_t  mBackColor  = Colors::Black;  // 当前背景颜色
-    Direction mDirection  = Direction::Vertical;   // 当前显示方向
-    NumFillMode mNumFillMode = NumFillMode::FillZero; // 数字填充模式
-    uint8_t   mXOffset    = 0;        // X 坐标偏移（设显示方向时使用）
-    uint8_t   mYOffset    = 0;        // Y 坐标偏移（设显示方向时使用）
-    const Font *mAsciiFont = nullptr; // 当前 ASCII 字体
-    const Font *mChFont    = nullptr; // 当前中文字体
+    Transport              &Comm;    // 通信传输层引用
+    BufferPolicy<BufferSz>  Buf;     // 像素数据缓冲区
+    uint16_t  Width;                 // 屏幕像素宽度
+    uint16_t  Height;                // 屏幕像素高度
+    uint32_t  Color      = Colors::White;  // 当前画笔颜色
+    uint32_t  BackColor  = Colors::Black;  // 当前背景颜色
+    Direction DisplayDir = Direction::Vertical;   // 当前显示方向
+    NumFillMode NumFillMode = NumFillMode::FillZero; // 数字填充模式
+    uint8_t   XOffset    = 0;        // X 坐标偏移（设显示方向时使用）
+    uint8_t   YOffset    = 0;        // Y 坐标偏移（设显示方向时使用）
+    const Font *AsciiFont = nullptr; // 当前 ASCII 字体
+    const Font *ChFont    = nullptr; // 当前中文字体
 
     // ============================================================
     // 受保护的辅助方法（子类可调用）
@@ -602,13 +602,13 @@ protected:
     }
 
     // 设置 GRAM 地址窗口（CRTP 委托给子类）
-    void setAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye) noexcept
+    void SetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye) noexcept
     {
-        xs += mXOffset;
-        ys += mYOffset;
-        xe += mXOffset;
-        ye += mYOffset;
-        static_cast<Driver*>(this)->implSetAddr(xs, ys, xe, ye);
+        xs += XOffset;
+        ys += YOffset;
+        xe += XOffset;
+        ye += YOffset;
+        static_cast<Driver*>(this)->ImplSetAddr(xs, ys, xe, ye);
     }
 
     // 通用字形渲染引擎（ASCII 和中文共用）
@@ -630,15 +630,15 @@ protected:
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = 7 - (col % 8);
                 // bit=1 用画笔色，bit=0 用背景色
-                mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
-                                    ? c888To565(mColor)
-                                    : c888To565(mBackColor);
+                Buf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
+                                    ? c888To565(Color)
+                                    : c888To565(BackColor);
             }
             // 缓冲区满：批量写入显存
             if (bc >= bh * f.width)
             {
-                setAddr(x, ya, x + f.width - 1, ya + bh - 1);
-                mComm.writeBulk(mBuf.data, f.width * bh);
+                SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
+                Comm.writeBulk(Buf.data, f.width * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -646,28 +646,28 @@ protected:
         // 剩余不足缓冲区一整行
         if (bc > 0)
         {
-            setAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.writeBulk(mBuf.data, bc);
+            SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
+            Comm.writeBulk(Buf.data, bc);
         }
     }
 
     // 矩形区域填充（被 clear/clearRect/fillRect/drawLineH/drawLineV 共用）
     void fillRectImpl(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint32_t color888)
     {
-        if (x + w > mWidth || y + h > mHeight)
+        if (x + w > Width || y + h > Height)
         {
             return;
         }
-        setAddr(x, y, x + w - 1, y + h - 1);
+        SetAddr(x, y, x + w - 1, y + h - 1);
         uint16_t c = c888To565(color888);
         uint16_t total = w * h;
         for (uint16_t i = 0; i < total; ++i)
         {
-            mBuf.data[i % BufferSz] = c;
+            Buf.data[i % BufferSz] = c;
             if ((i + 1) % BufferSz == 0 || i == total - 1)
             {
                 uint16_t chunk = ((i + 1) % BufferSz == 0) ? BufferSz : ((i % BufferSz) + 1);
-                mComm.writeBulk(mBuf.data, chunk);
+                Comm.writeBulk(Buf.data, chunk);
             }
         }
     }

@@ -13,13 +13,13 @@ class SPITransport final : public ICommunication<SPITransport>
 public:
     explicit SPITransport(SPI_HandleTypeDef *hspi) noexcept : mHspi(hspi)
     {
-        cbCsLow   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_11 << 16u; };
-        cbCsHigh  = [] { GPIOD->BSRR = GPIO_PIN_11; };
-        cbDcCmd   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_12 << 16u; };
-        cbDcDat   = [] { GPIOD->BSRR = GPIO_PIN_12; };
-        cbDelayMs = [] (uint32_t ms) { HAL_Delay(ms); };
+        CbCsLow   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_11 << 16u; };
+        CbCsHigh  = [] { GPIOD->BSRR = GPIO_PIN_11; };
+        CbDcCmd   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_12 << 16u; };
+        CbDcDat   = [] { GPIOD->BSRR = GPIO_PIN_12; };
+        CbDelayMs = [] (uint32_t ms) { HAL_Delay(ms); };
 
-        cbInit = [this]
+        CbInit = [this]
         {
             __HAL_RCC_SPI3_CLK_ENABLE();
             __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -31,8 +31,8 @@ public:
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_12; g.Mode=GPIO_MODE_OUTPUT_PP;  g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_HIGH;      HAL_GPIO_Init(GPIOD,&g); }
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_13; g.Mode=GPIO_MODE_OUTPUT_PP;  g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_LOW;       HAL_GPIO_Init(GPIOD,&g); }
 
-            cbDcDat(); cbCsHigh();
-            GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u;  // Ä¬ÈÏ¹Ø±³¹â
+            CbDcDat(); CbCsHigh();
+            GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u;  // Ä¬ï¿½Ï¹Ø±ï¿½ï¿½ï¿½
 
             mHspi->Instance            = SPI3;
             mHspi->Init.Mode           = SPI_MODE_MASTER;
@@ -52,35 +52,35 @@ public:
         };
     }
 
-    // ===== ÓÃ»§¿ÉÌæ»»µÄ»Øµ÷ =====
-    std::function<void()>         cbInit;
-    std::function<void()>         cbCsLow;
-    std::function<void()>         cbCsHigh;
-    std::function<void()>         cbDcCmd;
-    std::function<void()>         cbDcDat;
-    std::function<void(uint32_t)> cbDelayMs;
+    // ===== ï¿½Ã»ï¿½ï¿½ï¿½ï¿½æ»»ï¿½Ä»Øµï¿½ =====
+    std::function<void()>         CbInit;
+    std::function<void()>         CbCsLow;
+    std::function<void()>         CbCsHigh;
+    std::function<void()>         CbDcCmd;
+    std::function<void()>         CbDcDat;
+    std::function<void(uint32_t)> CbDelayMs;
 
-    // ===== CRTP ½Ó¿Ú =====
+    // ===== CRTP ï¿½Ó¿ï¿½ =====
 
-    void implInit() { cbInit(); }
+    void ImplInit() { CbInit(); }
 
-    void implWriteCommand(uint8_t cmd)
+    void ImplWriteCommand(uint8_t cmd)
     {
         while (mHspi->Instance->SR & SPI_SR_BSY) {}
-        cbDcCmd();
+        CbDcCmd();
         mHspi->Instance->DR = cmd;
         while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
         while (mHspi->Instance->SR & SPI_SR_BSY) {}
-        cbDcDat();
+        CbDcDat();
     }
 
-    void implWriteData8(uint8_t data)
+    void ImplWriteData8(uint8_t data)
     {
         mHspi->Instance->DR = data;
         while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
     }
 
-    void implWriteData16(uint16_t data)
+    void ImplWriteData16(uint16_t data)
     {
         mHspi->Instance->DR = static_cast<uint8_t>(data >> 8u);
         while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
@@ -88,31 +88,31 @@ public:
         while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
     }
 
-    void implWriteBulk(uint16_t *buf, uint16_t sz)
+    void ImplWriteBulk(uint16_t *buf, uint16_t sz)
     {
         CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
         SET_BIT(mHspi->Instance->CR1, SPI_CR1_DFF);
         SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
 
-        cbCsLow();
+        CbCsLow();
         for (uint16_t i = 0; i < sz; ++i)
         {
             mHspi->Instance->DR = buf[i];
             while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
         }
         while (mHspi->Instance->SR & SPI_SR_BSY) {}
-        cbCsHigh();
+        CbCsHigh();
 
         CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
         CLEAR_BIT(mHspi->Instance->CR1, SPI_CR1_DFF);
         SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
     }
 
-    void implCsLow()        { cbCsLow(); }
-    void implCsHigh()       { cbCsHigh(); }
-    void implDcCommand()    { cbDcCmd(); }
-    void implDcData()       { cbDcDat(); }
-    void implDelayMs(uint32_t ms) { cbDelayMs(ms); }
+    void ImplCsLow()        { CbCsLow(); }
+    void ImplCsHigh()       { CbCsHigh(); }
+    void ImplDcCommand()    { CbDcCmd(); }
+    void ImplDcData()       { CbDcDat(); }
+    void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
 
 private:
     SPI_HandleTypeDef *mHspi;
