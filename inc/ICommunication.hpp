@@ -43,11 +43,11 @@ public:
     /* 将缓冲区数据刷入硬件，子类根据传输特性实现 */
     inline void Flush(uint16_t sz) { GetImpl().ImplFlush(sz); }
 
+    BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
+
 protected:
     ICommunication() = default;
     ~ICommunication() = default;
-
-    BufferPolicy<BufSz>  mBuf;  /* C++11: member buffer, shared with sub-classes */
 
 private:
     Impl &GetImpl() { return static_cast<Impl&>(*this); }  /* C++11: static_cast */

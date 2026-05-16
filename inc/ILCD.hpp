@@ -90,13 +90,6 @@ namespace Colors
 /* ============================================================ */
 
 template <uint16_t Size = 1024>
-struct BufferPolicy
-{
-    static constexpr uint16_t size = Size;
-    uint16_t data[Size] = {};
-};
-
-/* ============================================================ */
 /* ILCD：LCD 抽象基类模板 */
 /* CRTP 三个模板参数： */
 /* Driver    — 具体驱动类（如 LCD_ST7789） */
