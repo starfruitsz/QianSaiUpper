@@ -1,4 +1,4 @@
-#ifndef ICOMMUNICATION_HPP
+﻿#ifndef ICOMMUNICATION_HPP
 #define ICOMMUNICATION_HPP
 
 #include <cstdint>
@@ -24,6 +24,7 @@ struct BufferPolicy
 {
     static constexpr uint16_t size = Size;  /* C++11: constexpr */
     uint16_t data[Size] = {};               /* C++11: brace init */
+    uint16_t pos = 0;                       /* current write cursor */
 };
 
 /* ============================================================ */
