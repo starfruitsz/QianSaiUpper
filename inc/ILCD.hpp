@@ -243,6 +243,19 @@ public:
         }
     }
 
+    /* Formatted output: sprintf to stack buffer then DrawString */
+    /* ShowFmt: printf-style formatted output at (x,y) */
+    void ShowFmt(uint16_t x, uint16_t y, const char *fmt, ...)
+    {
+        char buf[128];  /* C++11: stack buffer */
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+        buf[sizeof(buf) - 1] = 0;
+        DrawString(x, y, buf);
+    }
+
     /* ---------- 中文绘制 ---------- */
 
     /* Draw single CJK character from SD card via callback */
