@@ -81,6 +81,10 @@ public:
     inline void DelayMs(uint32_t ms) { GetImpl().ImplDelayMs(ms); }  /* blocking delay */
     inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); mBuf.Reset(); }  /* flush mBuf then reset cursor */
 
+    /* --- Buffer helpers --- */
+    inline void Buff(uint16_t val)   { mBuf.Push(val); }               /* push one pixel */
+    inline uint16_t BuffPos() const  { return mBuf.mPos; }             /* read cursor */
+
     BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
 
     /* ============================================================ */

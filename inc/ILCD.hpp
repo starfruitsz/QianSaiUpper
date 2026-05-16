@@ -579,11 +579,11 @@ public:
                     {
                         break;
                     }
-                    mComm.mBuf.Push((byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor));
+                    mComm.Buff((byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor));
                 }
             }
             /* 缓冲区满或到最后一行：批量写入显存 */
-            if (mComm.mBuf.mPos >= bh * w)
+            if (mComm.BuffPos() >= bh * w)
             {
                 SetAddr(x, ya, x + w - 1, ya + bh - 1);
                 mComm.Flush(w * bh);
@@ -591,10 +591,10 @@ public:
             }
         }
         /* 剩余不足一行 */
-        if (mComm.mBuf.mPos > 0)
+        if (mComm.BuffPos() > 0)
         {
             SetAddr(x, ya, x + w - 1, row + y);
-            mComm.Flush(mComm.mBuf.mPos);
+            mComm.Flush(mComm.BuffPos());
         }
     }
 
@@ -650,12 +650,12 @@ protected:
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = col % 8;  /* LSB-first, matching PCtoLCD C51 format */
                 /* bit=1 用画笔色，bit=0 用背景色 */
-                mComm.mBuf.Push((f.table[byteIdx] & (1u << bitPos))
+                mComm.Buff((f.table[byteIdx] & (1u << bitPos))
                                      ? c888To565(mColor)
                                      : c888To565(mBackColor));
             }
             /* 缓冲区满：批量写入显存 */
-            if (mComm.mBuf.mPos >= bh * f.width)
+            if (mComm.BuffPos() >= bh * f.width)
             {
                 SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
                 mComm.Flush(f.width * bh);
@@ -663,10 +663,10 @@ protected:
             }
         }
         /* 剩余不足缓冲区一整行 */
-        if (mComm.mBuf.mPos > 0)
+        if (mComm.BuffPos() > 0)
         {
             SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.Flush(mComm.mBuf.mPos);
+            mComm.Flush(mComm.BuffPos());
         }
     }
 
@@ -682,7 +682,7 @@ protected:
         uint16_t total = w * h;
         for (uint16_t i = 0; i < total; ++i)
         {
-            mComm.mBuf.Push(c);
+            mComm.Buff(c);
             if ((i + 1) % Transport::kBufSize == 0 || i == total - 1)
             {
                 uint16_t chunk = ((i + 1) % Transport::kBufSize == 0) ? Transport::kBufSize : ((i % Transport::kBufSize) + 1);
