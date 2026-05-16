@@ -89,8 +89,6 @@ namespace Colors
 /* 缓冲区策略（模板参数，零成本定制缓冲区大小） */
 /* ============================================================ */
 
-template <uint16_t Size = 1024>
-/* ILCD：LCD 抽象基类模板 */
 /* CRTP 三个模板参数： */
 /* Driver    — 具体驱动类（如 LCD_ST7789） */
 /* Transport — 通信传输层（CRTP ICommunication 子类） */
