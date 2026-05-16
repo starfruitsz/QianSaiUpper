@@ -6,6 +6,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <functional>
+#include <print>\n#include <format>
 
 namespace CTLIB
 {
@@ -76,28 +77,51 @@ public:
         mHuart->Instance->DR = data;
     }
 
-    /* ===== 以下为 LCD 专用接口，UART 不使用但仍需实现 ===== */
-    void ImplWriteCommand(uint8_t) {}
-    void ImplWriteData16(uint16_t) {}
-    void ImplWriteBulk(uint16_t *, uint16_t) {}
-    void ImplCsLow()        {}
-    void ImplCsHigh()       {}
-    void ImplDcCommand()    {}
-    void ImplDcData()       {}
-    void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
-
-    /* === Buffer Flush - UART already sent byte-by-byte === */
-    void ImplFlush(uint16_t) {}
 
     /* ============================================================ */
-    /* Printf — C++11 可变参数格式化打印 */
-    /* 基于 vsnprintf，最大 kTxBufSize 字节 */
+    /* Print - C++23 std::print style (zero-cost format + UART TX)  */
+    /* Enabled when __cpp_lib_print >= 202207L (C++23 <print>)       */
+    /* Falls back to Printf (vsnprintf) on C++11..C++20              */
     /* ============================================================ */
+
+#if __cpp_lib_print >= 202207L  /* C++23: std::print available */
+
+    /* C++23: std::print style - type-safe, no format string vulns */
+    template <typename... Args>
+    void Print(std::format_string<Args...> fmt, Args&&... args)
+    {
+        auto &buf = this->mBuf;  /* C++11: reuse base buffer */
+        auto result = std::format_to_n(
+            reinterpret_cast<char*>(buf.data),
+            kBufSize * 2 - 1,
+            fmt,
+            std::forward<Args>(args)...
+        );
+        uint16_t n = static_cast<uint16_t>(result.size);
+        for (uint16_t i = 0; i < n; ++i)
+        {
+            ImplWriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
+        }
+        reinterpret_cast<char*>(buf.data)[n] = '\0';
+    }
+
+    /* C++23: single-argument overload (no formatting needed) */
+    void Print(const char *s)
+    {
+        while (*s)
+        {
+            ImplWriteData8(static_cast<uint8_t>(*s++));
+        }
+    }
+
+#else  /* C++11..C++20 fallback: vsnprintf */
+
+    /* C++11: variadic printf via vsnprintf, max kBufSize*2 bytes */
     void Printf(const char *fmt, ...)
     {
-        auto &buf = this->mBuf;   /* 使用基类缓冲区，避免栈分配 */
+        auto &buf = this->mBuf;
         va_list args;
-        va_start(args, fmt);      /* C++11: variadic arguments */
+        va_start(args, fmt);
         int len = vsnprintf(reinterpret_cast<char*>(buf.data), kBufSize * 2, fmt, args);
         va_end(args);
 
@@ -107,8 +131,10 @@ public:
         {
             ImplWriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
         }
-        this->Flush(n);
     }
+
+#endif  /* __cpp_lib_print */
+
 
 private:
     UART_HandleTypeDef *mHuart;
