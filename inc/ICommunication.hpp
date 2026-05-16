@@ -75,7 +75,7 @@ public:
 
     /* --- Utility --- */
     inline void DelayMs(uint32_t ms) { GetImpl().ImplDelayMs(ms); }  /* blocking delay */
-    inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); }    /* flush mBuf to hw */
+    inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); mBuf.Reset(); }  /* flush mBuf then reset cursor */
 
     BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
 
