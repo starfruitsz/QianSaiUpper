@@ -14,37 +14,37 @@ namespace CTLIB
 {
 
 /* ============================================================ */
-/* BufferPolicy - fixed-size pixel buffer (uint16_t) */
-/* For SPI LCD: stores RGB565 pixels before bulk transfer */
-/* For UART:     reused as char buffer for printf formatting */
+/* BufferPolicy<T, Size> - generic fixed-size buffer */
+/* T=uint16_t: RGB565 pixel buffer for SPI LCD */
+/* T=uint8_t :  byte buffer for UART / T=char : printf formatting */
 /* ============================================================ */
 
-template <uint16_t Size = 1024>
+template <typename T = uint16_t, uint16_t Size = 1024>
 struct BufferPolicy
 {
     static constexpr uint16_t size = Size;  /* C++11: constexpr */
 
     /* Read element at index (const) */
-    const uint16_t& operator[](uint16_t idx) const { return mData[idx]; }
+    const T& operator[](uint16_t idx) const { return mData[idx]; }
 
     /* Push value at current cursor, auto-increment */
-    void Push(uint16_t val) { mData[mPos++] = val; }
+    void Push(T val) { mData[mPos++] = val; }
 
     /* Get raw pointer to buffer start (for bulk ops like vsnprintf) */
-    uint16_t* Ptr()       { return mData; }
-    const uint16_t* Ptr() const { return mData; }
+    T* Ptr()       { return mData; }
+    const T* Ptr() const { return mData; }
 
     /* Get pointer to current cursor position (for sequential write) */
-    uint16_t* Data()       { return &mData[mPos]; }
-    const uint16_t* Data() const { return &mData[mPos]; }
+    T* Data()       { return &mData[mPos]; }
+    const T* Data() const { return &mData[mPos]; }
 
     /* Reset write cursor to zero */
     void Reset() { mPos = 0; }
 
-    uint16_t  mPos = 0;              /* current write cursor */
+    uint16_t  mPos = 0;              /* current write cursor (element count) */
 
 private:
-    uint16_t  mData[Size] = {};      /* C++11: brace init */
+    T  mData[Size] = {};             /* C++11: brace init */
 };
 
 /* ============================================================ */
@@ -86,7 +86,7 @@ public:
     inline void Buff(uint16_t val)   { mBuf.Push(val); }  /* push one pixel */
     inline uint16_t BuffPos() const  { return mBuf.mPos; }             /* read cursor */
 
-    BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
+    BufferPolicy<uint16_t, BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
 
     /* ============================================================ */
     /* Print - C++23 std::print style (zero-cost format + UART TX)  */
