@@ -670,8 +670,15 @@ protected:
         for (uint16_t i = 0; i < total; ++i)
         {
             mComm.Buff(c);
+            if (mComm.BuffPos() >= Transport::kBufSize)
+            {
+                mComm.Flush();
+            }
         }
-        mComm.Flush();
+        if (mComm.BuffPos() > 0)
+        {
+            mComm.Flush();
+        }
     }
 };
 
