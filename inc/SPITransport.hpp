@@ -51,8 +51,6 @@ public:
             SPI_1LINE_TX(mHspi);
         };
     }
-
-    /* ===== �û����滻�Ļص� ===== */
     std::function<void()>         CbInit;
     std::function<void()>         CbCsLow;
     std::function<void()>         CbCsHigh;
@@ -60,11 +58,10 @@ public:
     std::function<void()>         CbDcDat;
     std::function<void(uint32_t)> CbDelayMs;
 
-    /* ===== CRTP �ӿ� ===== */
-
     void ImplInit() { CbInit(); }
 
-    void ImplWriteCommand(uint8_t cmd)
+    /* LCD command byte (DC=0, then DC=1) */
+    void WriteCommand(uint8_t cmd)
     {
         while (mHspi->Instance->SR & SPI_SR_BSY) {}
         CbDcCmd();
@@ -108,10 +105,13 @@ public:
         SET_BIT(mHspi->Instance->CR1, SPI_CR1_SPE);
     }
 
-    void ImplCsLow()        { CbCsLow(); }
-    void ImplCsHigh()       { CbCsHigh(); }
-    void ImplDcCommand()    { CbDcCmd(); }
-    void ImplDcData()       { CbDcDat(); }
+    /* --- Chip-select (active-low) --- */
+    void CsLow()     { CbCsLow(); }        /* CS = 0 */
+    void CsHigh()    { CbCsHigh(); }       /* CS = 1 */
+
+    /* --- Data/Command pin --- */
+    void DcCommand() { CbDcCmd(); }        /* DC = 0 */
+    void DcData()    { CbDcDat(); }        /* DC = 1 */
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
 
     /* === Buffer Flush — SPI 无额外操作，WriteBulk 已自管理 CS === */

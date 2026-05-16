@@ -2,6 +2,13 @@
 #define ICOMMUNICATION_HPP
 
 #include <cstdint>
+#include <cstdarg>
+#include <cstdio>
+
+#if __cpp_lib_print >= 202207L
+#include <print>
+#include <format>
+#endif
 
 namespace CTLIB
 {
@@ -29,15 +36,12 @@ struct BufferPolicy
 /* Public CRTP interface (all inline, zero-cost delegation):    */
 /*                                                              */
 /*   Init()       - hardware init (clocks, GPIO, peripheral)    */
-/*   WriteCommand - send LCD command byte (DC=0, CS active)     */
-/*   WriteData8   - send 8-bit data (DC=1)                      */
-/*   WriteData16  - send 16-bit data MSB-first (2 x WriteData8) */
+/*   WriteData8   - send 8-bit data                             */
+/*   WriteData16  - send 16-bit data MSB-first                  */
 /*   WriteBulk    - burst-write uint16_t[] buffer (optimized)   */
-/*   CsLow/CsHigh - chip-select control                         */
-/*   DcCommand    - DC pin low (command mode)                   */
-/*   DcData       - DC pin high (data mode)                     */
 /*   DelayMs      - blocking delay (HAL_Delay)                  */
 /*   Flush        - flush buffer to hardware (subclass impl)    */
+/*   Print        - formatted UART output (C++23 std::print)    */
 /* ============================================================ */
 
 template <typename Impl, uint16_t BufSz = 1024>
@@ -49,25 +53,72 @@ public:
     /* --- Hardware lifecycle --- */
     inline void Init()            { GetImpl().ImplInit(); }    /* one-time hw setup */
 
-    /* --- LCD command/data (DC-controlled) --- */
-    inline void WriteCommand(uint8_t c) { GetImpl().ImplWriteCommand(c); }  /* DC=0, send cmd */
-    inline void WriteData8(uint8_t d)   { GetImpl().ImplWriteData8(d); }    /* DC=1, 1 byte */
-    inline void WriteData16(uint16_t d) { GetImpl().ImplWriteData16(d); }   /* DC=1, 2 bytes MSB */
+    /* --- Data transfer --- */
+    inline void WriteData8(uint8_t d)   { GetImpl().ImplWriteData8(d); }    /* 1 byte */
+    inline void WriteData16(uint16_t d) { GetImpl().ImplWriteData16(d); }   /* 2 bytes MSB */
     inline void WriteBulk(uint16_t *b, uint16_t s) { GetImpl().ImplWriteBulk(b, s); }  /* burst write */
-
-    /* --- Chip-select (active-low) --- */
-    inline void CsLow()       { GetImpl().ImplCsLow(); }       /* CS = 0 */
-    inline void CsHigh()      { GetImpl().ImplCsHigh(); }      /* CS = 1 */
-
-    /* --- Data/Command pin --- */
-    inline void DcCommand()   { GetImpl().ImplDcCommand(); }   /* DC = 0 */
-    inline void DcData()      { GetImpl().ImplDcData(); }      /* DC = 1 */
 
     /* --- Utility --- */
     inline void DelayMs(uint32_t ms) { GetImpl().ImplDelayMs(ms); }  /* blocking delay */
     inline void Flush(uint16_t sz)   { GetImpl().ImplFlush(sz); }    /* flush mBuf to hw */
 
     BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
+
+    /* ============================================================ */
+    /* Print - C++23 std::print style (zero-cost format + UART TX)  */
+    /* Enabled when __cpp_lib_print >= 202207L (C++23 <print>)       */
+    /* Falls back to vsnprintf on C++11..C++20                       */
+    /* ============================================================ */
+
+#if __cpp_lib_print >= 202207L  /* C++23: std::print available */
+
+    /* C++23: type-safe format, no format string vulns */
+    template <typename... Args>
+    void Print(std::format_string<Args...> fmt, Args&&... args)
+    {
+        auto &buf = this->mBuf;
+        auto result = std::format_to_n(
+            reinterpret_cast<char*>(buf.data),
+            kBufSize * 2 - 1,
+            fmt,
+            std::forward<Args>(args)...
+        );
+        uint16_t n = static_cast<uint16_t>(result.size);
+        for (uint16_t i = 0; i < n; ++i)
+        {
+            WriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
+        }
+    }
+
+    /* C++23: raw string overload (no formatting overhead) */
+    void Print(const char *s)
+    {
+        while (*s)
+        {
+            WriteData8(static_cast<uint8_t>(*s++));
+        }
+    }
+
+#else  /* C++11..C++20 fallback: vsnprintf */
+
+    /* C++11: variadic printf via vsnprintf */
+    void Print(const char *fmt, ...)
+    {
+        auto &buf = this->mBuf;
+        va_list args;
+        va_start(args, fmt);
+        int len = vsnprintf(reinterpret_cast<char*>(buf.data), kBufSize * 2, fmt, args);
+        va_end(args);
+
+        if (len < 0) return;
+        uint16_t n = static_cast<uint16_t>(len < static_cast<int>(kBufSize * 2) ? len : kBufSize * 2 - 1);
+        for (uint16_t i = 0; i < n; ++i)
+        {
+            WriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
+        }
+    }
+
+#endif  /* __cpp_lib_print */
 
 protected:
     ICommunication() = default;    /* C++11: defaulted constructor */

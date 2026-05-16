@@ -3,11 +3,7 @@
 
 #include "ICommunication.hpp"
 #include <cstdint>
-#include <cstdarg>
-#include <cstdio>
 #include <functional>
-#include <print>
-#include <format>
 
 namespace CTLIB
 {
@@ -78,64 +74,11 @@ public:
         mHuart->Instance->DR = data;
     }
 
-
-    /* ============================================================ */
-    /* Print - C++23 std::print style (zero-cost format + UART TX)  */
-    /* Enabled when __cpp_lib_print >= 202207L (C++23 <print>)       */
-    /* Falls back to Print (vsnprintf) on C++11..C++20              */
-    /* ============================================================ */
-
-#if __cpp_lib_print >= 202207L  /* C++23: std::print available */
-
-    /* C++23: std::print style - type-safe, no format string vulns */
-    template <typename... Args>
-    void Print(std::format_string<Args...> fmt, Args&&... args)
-    {
-        auto &buf = this->mBuf;  /* C++11: reuse base buffer */
-        auto result = std::format_to_n(
-            reinterpret_cast<char*>(buf.data),
-            kBufSize * 2 - 1,
-            fmt,
-            std::forward<Args>(args)...
-        );
-        uint16_t n = static_cast<uint16_t>(result.size);
-        for (uint16_t i = 0; i < n; ++i)
-        {
-            ImplWriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
-        }
-        reinterpret_cast<char*>(buf.data)[n] = '\0';
-    }
-
-    /* C++23: single-argument overload (no formatting needed) */
-    void Print(const char *s)
-    {
-        while (*s)
-        {
-            ImplWriteData8(static_cast<uint8_t>(*s++));
-        }
-    }
-
-#else  /* C++11..C++20 fallback: vsnprintf */
-
-    /* C++11: variadic printf via vsnprintf, max kBufSize*2 bytes */
-    void Print(const char *fmt, ...)
-    {
-        auto &buf = this->mBuf;
-        va_list args;
-        va_start(args, fmt);
-        int len = vsnprintf(reinterpret_cast<char*>(buf.data), kBufSize * 2, fmt, args);
-        va_end(args);
-
-        if (len < 0) return;
-        uint16_t n = static_cast<uint16_t>(len < static_cast<int>(kBufSize * 2) ? len : kBufSize * 2 - 1);
-        for (uint16_t i = 0; i < n; ++i)
-        {
-            ImplWriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
-        }
-    }
-
-#endif  /* __cpp_lib_print */
-
+    /* LCD-specific stubs */
+    void ImplWriteData16(uint16_t) {}
+    void ImplWriteBulk(uint16_t *, uint16_t) {}
+    void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
+    void ImplFlush(uint16_t) {}
 
 private:
     UART_HandleTypeDef *mHuart;
