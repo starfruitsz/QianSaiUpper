@@ -617,7 +617,7 @@ protected:
                 /* 中文字库: charIdx * (sizes+2) 跳转到对应字模；ASCII: charIdx = (c-' ')*sizes */
                 uint16_t base = (f.tableRows > 0) ? charIdx * (f.sizes + 2) : charIdx * f.sizes;  /* C++11: conditional */
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
-                uint8_t  bitPos  = 7 - (col % 8);
+                uint8_t  bitPos  = col % 8;  /* LSB-first, matching PCtoLCD C51 format */
                 /* bit=1 用画笔色，bit=0 用背景色 */
                 mComm.mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
                                     ? c888To565(mColor)
