@@ -180,7 +180,7 @@ public:
 
     /* 设置中文字体（同时包含 ASCII） */
     /* Set CJK font with SD card read callback */
-    void SetChineseFont(const Font *f, void (*reader)(uint32_t, uint8_t*)) { mChFont = f; mReadChinese = reader; }
+    void SetChineseFont(const Font *f, std::function<void(uint32_t, uint8_t*)> reader) { mChFont = f; mReadChinese = reader; }
 
     /* Set CJK+ASCII dual font */
     constexpr void SetTextFont(const Font *f) noexcept
@@ -288,7 +288,7 @@ public:
                     DrawChar(cx, y, static_cast<uint8_t>(cp));
                     cx += mAsciiFont->width;
                 }
-                else if (cp == '\\n')
+                else if (cp == '\n')
                 {
                     cx = x;
                     y += mAsciiFont->height;
@@ -638,7 +638,7 @@ protected:
     uint8_t   mYOffset    = 0;  /* Y 坐标偏移（设显示方向时使用） */
     const Font *mAsciiFont = nullptr;  /* 当前 ASCII 字体 */
     const Font *mChFont    = nullptr;  /* CJK font descriptor (width/height/sizes) */
-    void (*mReadChinese)(uint32_t unicode, uint8_t *buf) = nullptr;  /* SD card read callback */
+    std::function<void(uint32_t, uint8_t*)> mReadChinese;  /* C++11: SD card read callback */
 
     /* ============================================================ */
     /* 受保护的辅助方法（子类可调用） */
