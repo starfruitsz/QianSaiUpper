@@ -113,6 +113,7 @@ public:
     void Init()
     {
         static_cast<Driver*>(this)->ImplInit();
+        SetAsciiFont(&DefaultFont::value);  /* default 12x24 ASCII font */
     }
 
     /* 绘制单个像素点 */
