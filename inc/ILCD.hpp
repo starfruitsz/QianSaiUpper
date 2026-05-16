@@ -97,9 +97,6 @@ namespace Colors
 template <typename Driver, typename Transport>
 class ILCD
 {
-    static_assert(std::is_base_of_v<ICommunication<Transport, uint16_t, 1024>, Transport> || std::is_base_of_v<ICommunication<Transport, uint8_t, 256>, Transport>,
-                  "Transport must derive from ICommunication<Transport>");
-
 public:
     /* 构造：绑定通信层、设置屏幕尺寸 */
     explicit ILCD(Transport &comm, uint16_t w = 240, uint16_t h = 240)
@@ -182,6 +179,9 @@ public:
     }
 
     /* 设置中文字体（同时包含 ASCII） */
+    /* Set CJK font with SD card read callback */
+    void SetChineseFont(const Font *f, void (*reader)(uint32_t, uint8_t*)) { mChFont = f; mReadChinese = reader; }
+
     /* Set CJK+ASCII dual font */
     constexpr void SetTextFont(const Font *f) noexcept
     {
@@ -245,25 +245,62 @@ public:
 
     /* ---------- 中文绘制 ---------- */
 
-    /* 显示单个汉字（GB2312 双字节编码） */
-    /* Draw GB2312 Chinese text at (x,y) */
-    void DrawChinese(uint16_t x, uint16_t y, const char *text)
+    /* Draw single CJK character from SD card via callback */
+    /* User provides ReadChinese(unicode, buf) to fill buf with glyph bytes */
+    void DrawChinese(uint16_t x, uint16_t y, uint32_t unicode)
     {
-        if (!text || !mChFont)
-        {
-            return;
-        }
+        if (!mChFont || !mReadChinese) return;
         const auto &f = *mChFont;
-        uint8_t hi = static_cast<uint8_t>(text[0]);
-        uint8_t lo = static_cast<uint8_t>(text[1]);
-        /* 遍历字库二维表，匹配汉字索引 */
-        for (uint16_t i = 0; i < f.tableRows; ++i)
+        mReadChinese(unicode, const_cast<uint8_t*>(f.table));  /* fill font.table[] via callback */
+        drawGlyphFromFont(x, y, 0, f);  /* index 0, callback writes to table[0..sizes) */
+    }
+
+    /* Draw UTF-8 string: ASCII via mAsciiFont, CJK via mReadChinese callback */
+    /* Draw UTF-8 string with ASCII + CJK glyphs from SD card */
+    void DrawChinese(uint16_t x, uint16_t y, const char *utf8)
+    {
+        if (!utf8 || !mChFont || !mReadChinese) return;
+        uint16_t cx = x;
+        while (*utf8)
         {
-            uint16_t base = i * (f.sizes + 2);
-            if (f.table[base + f.sizes] == hi && f.table[base + f.sizes + 1] == lo)
+            uint32_t cp = 0;
+            uint8_t len = 0;
+            uint8_t c0 = static_cast<uint8_t>(*utf8);
+
+            /* Decode UTF-8 to Unicode code point */
+            if ((c0 & 0x80u) == 0x00u)       { cp = c0; len = 1; }       /* 0xxxxxxx: ASCII */
+            else if ((c0 & 0xE0u) == 0xC0u)  { cp = c0 & 0x1Fu; len = 2; }  /* 110xxxxx */
+            else if ((c0 & 0xF0u) == 0xE0u)  { cp = c0 & 0x0Fu; len = 3; }  /* 1110xxxx */
+            else if ((c0 & 0xF8u) == 0xF0u)  { cp = c0 & 0x07u; len = 4; }  /* 11110xxx */
+            else { ++utf8; continue; }  /* invalid lead byte, skip */
+
+            for (uint8_t i = 1; i < len; ++i)
             {
-                drawGlyphFromFont(x, y, i, f);
-                return;
+                cp = (cp << 6u) | (static_cast<uint8_t>(utf8[i]) & 0x3Fu);
+            }
+            utf8 += len;
+
+            if (cp < 0x80u && mAsciiFont)
+            {
+                /* ASCII char */
+                if (cp >= ' ' && cp <= '~')
+                {
+                    DrawChar(cx, y, static_cast<uint8_t>(cp));
+                    cx += mAsciiFont->width;
+                }
+                else if (cp == '
+')
+                {
+                    cx = x;
+                    y += mAsciiFont->height;
+                }
+            }
+            else
+            {
+                /* CJK: fetch from SD via callback */
+                mReadChinese(cp, const_cast<uint8_t*>(mChFont->table));
+                drawGlyphFromFont(cx, y, 0, *mChFont);
+                cx += mChFont->width;
             }
         }
     }
@@ -601,7 +638,8 @@ protected:
     uint8_t   mXOffset    = 0;  /* X 坐标偏移（设显示方向时使用） */
     uint8_t   mYOffset    = 0;  /* Y 坐标偏移（设显示方向时使用） */
     const Font *mAsciiFont = nullptr;  /* 当前 ASCII 字体 */
-    const Font *mChFont    = nullptr;  /* 当前中文字体 */
+    const Font *mChFont    = nullptr;  /* CJK font descriptor (width/height/sizes) */
+    void (*mReadChinese)(uint32_t unicode, uint8_t *buf) = nullptr;  /* SD card read callback */
 
     /* ============================================================ */
     /* 受保护的辅助方法（子类可调用） */
