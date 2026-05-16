@@ -104,6 +104,16 @@ public:
     {
     }
 
+    /* Row/Column helpers (constexpr, computed from font) */
+    /* RowY(row): Y coordinate for row N */
+    constexpr uint16_t RowY(uint16_t row) const { return row * (mAsciiFont ? mAsciiFont->height : 24); }
+    /* ColX(col): X coordinate for column N */
+    constexpr uint16_t ColX(uint16_t col) const { return col * (mAsciiFont ? mAsciiFont->width : 12); }
+    /* MaxRows: how many rows fit on screen */
+    constexpr uint16_t MaxRows() const { return mHeight / (mAsciiFont ? mAsciiFont->height : 24); }
+    /* MaxCols: how many columns fit on screen */
+    constexpr uint16_t MaxCols() const { return mWidth / (mAsciiFont ? mAsciiFont->width : 12); }
+
     /* ---------- 驱动层入口（通过 CRTP 委托给子类）---------- */
 
     /* 屏幕初始化（含寄存器配置） */
