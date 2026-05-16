@@ -1,4 +1,4 @@
-#ifndef LCD_ST7789_HPP
+﻿#ifndef LCD_ST7789_HPP
 #define LCD_ST7789_HPP
 
 #include "ILCD.hpp"
@@ -23,16 +23,14 @@ class LCD_ST7789 final
 
 public:
     // 构造：绑定传输层，指定屏幕宽高（默认 240×240）
-    // 背光控制（直接操作 GPIOD BSRR 寄存器）
-    void backlightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
-    void backlightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
-
     explicit LCD_ST7789(Transport &comm, uint16_t w = 240, uint16_t h = 240)
         : Base(comm, w, h)
     {
     }
 
 private:
+    void implBacklightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
+    void implBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
     // ============================================================
     // CRTP 入口 — 屏幕初始化
     // 1. 初始化 SPI 外设

@@ -174,7 +174,11 @@ public:
         }
     }
 
-    // ---------- 属性读取 ----------
+        // 背光控制（CRTP 委托给子类实现）
+    void backlightOn()  { static_cast<Driver*>(this)->implBacklightOn(); }
+    void backlightOff() { static_cast<Driver*>(this)->implBacklightOff(); }
+
+// ---------- 属性读取 ----------
 
     constexpr uint32_t color()     const noexcept { return mColor; }
     constexpr uint32_t backColor() const noexcept { return mBackColor; }
