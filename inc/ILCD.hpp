@@ -626,7 +626,7 @@ protected:
             for (uint16_t col = 0; col < f.width; ++col)
             {
                 /* 中文字库: charIdx * (sizes+2) 跳转到对应字模；ASCII: charIdx = (c-' ')*sizes */
-                uint16_t base = (f.tableRows > 0) ? charIdx * (f.sizes + 2) : charIdx;
+                uint16_t base = (f.tableRows > 0) ? charIdx * (f.sizes + 2) : charIdx * f.sizes;  /* C++11: conditional */
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = 7 - (col % 8);
                 /* bit=1 用画笔色，bit=0 用背景色 */
