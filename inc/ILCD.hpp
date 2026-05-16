@@ -202,11 +202,11 @@ public:
     // 显示单个 ASCII 字符
     void DrawChar(uint16_t x, uint16_t y, uint8_t c)
     {
-        if (!AsciiFont || c < ' ' || c > '~')
+        if (!mAsciiFont || c < ' ' || c > '~')
         {
             return;
         }
-        auto &f = *AsciiFont;
+        auto &f = *mAsciiFont;
         // 根据 ASCII 码计算在字模表中的偏移
         drawGlyphFromFont(x, y, c - ' ', f);
     }
@@ -224,12 +224,12 @@ public:
             if (*s == '\n')
             {
                 cx = x;
-                y += AsciiFont->height;
+                y += mAsciiFont->height;
             }
             else
             {
                 DrawChar(cx, y, static_cast<uint8_t>(*s));
-                cx += AsciiFont->width;
+                cx += mAsciiFont->width;
             }
         }
     }
@@ -243,7 +243,7 @@ public:
         {
             return;
         }
-        const auto &f = *ChFont;
+        const auto &f = *mChFont;
         uint8_t hi = static_cast<uint8_t>(text[0]);
         uint8_t lo = static_cast<uint8_t>(text[1]);
         // 遍历字库二维表，匹配汉字索引
@@ -269,18 +269,18 @@ public:
         while (*t)
         {
             uint8_t c = static_cast<uint8_t>(*t);
-            if (c >= 0xA1 && ChFont)
+            if (c >= 0xA1 && mChFont)
             {
                 // 高字节 >= 0xA1 判定为中文
                 DrawChinese(cx, y, t);
                 t += 2;
                 cx += ChFont->width;
             }
-            else if (c >= ' ' && c <= '~' && AsciiFont)
+            else if (c >= ' ' && c <= '~' && mAsciiFont)
             {
                 DrawChar(cx, y, c);
                 ++t;
-                cx += AsciiFont->width;
+                cx += mAsciiFont->width;
             }
             else
             {
@@ -299,7 +299,7 @@ public:
             return;
         }
         char buf[16] = {};
-        if (NumFillMode == NumFillMode::FillZero)
+        if (mNumFillMode == NumFillMode::FillZero)
         {
             // 右对齐，零填充
             bool neg = num < 0;
@@ -351,7 +351,7 @@ public:
     // 垂直线（快速填充一列）
     void DrawLineV(uint16_t x, uint16_t y, uint16_t h)
     {
-        fillRectImpl(x, y, 1, h, Color);
+        fillRectImpl(x, y, 1, h, mColor);
     }
 
     // 任意两点间画线（Bresenham 算法）
@@ -377,7 +377,7 @@ public:
             uint16_t y = y0;
             for (uint16_t x = x0; x <= x1; ++x)
             {
-                DrawPoint(x, y, Color);
+                DrawPoint(x, y, mColor);
                 err -= ady;
                 if (err < 0)
                 {
@@ -399,7 +399,7 @@ public:
             uint16_t x = x0;
             for (uint16_t y = y0; y <= y1; ++y)
             {
-                DrawPoint(x, y, Color);
+                DrawPoint(x, y, mColor);
                 err -= adx;
                 if (err < 0)
                 {
@@ -428,14 +428,14 @@ public:
         while (cy >= cx)
         {
             // 利用八对称性一次画八个点
-            DrawPoint(x + cx, y + cy, Color);
-            DrawPoint(x - cx, y + cy, Color);
-            DrawPoint(x + cx, y - cy, Color);
-            DrawPoint(x - cx, y - cy, Color);
-            DrawPoint(x + cy, y + cx, Color);
-            DrawPoint(x - cy, y + cx, Color);
-            DrawPoint(x + cy, y - cx, Color);
-            DrawPoint(x - cy, y - cx, Color);
+            DrawPoint(x + cx, y + cy, mColor);
+            DrawPoint(x - cx, y + cy, mColor);
+            DrawPoint(x + cx, y - cy, mColor);
+            DrawPoint(x - cx, y - cy, mColor);
+            DrawPoint(x + cy, y + cx, mColor);
+            DrawPoint(x - cy, y + cx, mColor);
+            DrawPoint(x + cy, y - cx, mColor);
+            DrawPoint(x - cy, y - cx, mColor);
             if (D < 0)
             {
                 D += (cx << 2) + 6;
@@ -459,10 +459,10 @@ public:
         // 区域 1：X 方向增长快
         while (r2sq * cx <= r1sq * cy)
         {
-            DrawPoint(x + cx, y + cy, Color);
-            DrawPoint(x - cx, y + cy, Color);
-            DrawPoint(x + cx, y - cy, Color);
-            DrawPoint(x - cx, y - cy, Color);
+            DrawPoint(x + cx, y + cy, mColor);
+            DrawPoint(x - cx, y + cy, mColor);
+            DrawPoint(x + cx, y - cy, mColor);
+            DrawPoint(x - cx, y - cy, mColor);
             if (d < 0)
             {
                 d += r2sq * (2 * cx + 3);
@@ -479,10 +479,10 @@ public:
         d = static_cast<int>(r2sq * (cx + 0.5) * (cx + 0.5) + r1sq * (cy - 1) * (cy - 1) - r1sq * r2sq);
         while (cy >= 0)
         {
-            DrawPoint(x + cx, y + cy, Color);
-            DrawPoint(x - cx, y + cy, Color);
-            DrawPoint(x + cx, y - cy, Color);
-            DrawPoint(x - cx, y - cy, Color);
+            DrawPoint(x + cx, y + cy, mColor);
+            DrawPoint(x - cx, y + cy, mColor);
+            DrawPoint(x + cx, y - cy, mColor);
+            DrawPoint(x - cx, y - cy, mColor);
             if (d > 0)
             {
                 d += r1sq * (-2 * cy + 3);
@@ -501,7 +501,7 @@ public:
     // 实心矩形
     void FillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     {
-        fillRectImpl(x, y, w, h, Color);
+        fillRectImpl(x, y, w, h, mColor);
     }
 
     // 实心圆（水平线填充法）
@@ -557,7 +557,7 @@ public:
                     {
                         break;
                     }
-                    mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(Color) : c888To565(BackColor);
+                    mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
                 }
             }
             // 缓冲区满或到最后一行：批量写入显存
@@ -585,7 +585,7 @@ protected:
     uint32_t  mColor      = Colors::White;  // 当前画笔颜色
     uint32_t  mBackColor  = Colors::Black;  // 当前背景颜色
     Direction mDisplayDir = Direction::Vertical;   // 当前显示方向
-    NumFillMode mmNumFillMode = NumFillMode::FillZero; // 数字填充模式
+    NumFillMode mNumFillMode = NumFillMode::FillZero; // 数字填充模式
     uint8_t   mXOffset    = 0;        // X 坐标偏移（设显示方向时使用）
     uint8_t   mYOffset    = 0;        // Y 坐标偏移（设显示方向时使用）
     const Font *mAsciiFont = nullptr; // 当前 ASCII 字体
@@ -604,8 +604,8 @@ protected:
     // 设置 GRAM 地址窗口（CRTP 委托给子类）
     void SetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye) noexcept
     {
-        xs += XOffset;
-        ys += YOffset;
+        xs += mXOffset;
+        ys += mYOffset;
         xe += XOffset;
         ye += YOffset;
         static_cast<Driver*>(this)->ImplSetAddr(xs, ys, xe, ye);
@@ -654,7 +654,7 @@ protected:
     // 矩形区域填充（被 clear/clearRect/fillRect/drawLineH/drawLineV 共用）
     void fillRectImpl(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint32_t color888)
     {
-        if (x + w > mmWidth || y + h > mHeight)
+        if (x + w > mWidth || y + h > mHeight)
         {
             return;
         }
