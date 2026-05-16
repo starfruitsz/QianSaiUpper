@@ -565,7 +565,7 @@ public:
         {
             bh = 1;
         }
-        uint16_t ya = y, bc = 0;
+        uint16_t ya = y;
         uint16_t row = 0;
         for (; row < h; ++row)
         {
@@ -579,23 +579,22 @@ public:
                     {
                         break;
                     }
-                    mComm.mBuf.Ptr()[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
+                    mComm.mBuf.Push((byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor));
                 }
             }
             /* 缓冲区满或到最后一行：批量写入显存 */
-            if (bc >= bh * w)
+            if (mComm.mBuf.mPos >= bh * w)
             {
                 SetAddr(x, ya, x + w - 1, ya + bh - 1);
                 mComm.Flush(w * bh);
                 ya += bh;
-                bc = 0;
             }
         }
         /* 剩余不足一行 */
-        if (bc > 0)
+        if (mComm.mBuf.mPos > 0)
         {
             SetAddr(x, ya, x + w - 1, row + y);
-            mComm.Flush(bc);
+            mComm.Flush(mComm.mBuf.mPos);
         }
     }
 
@@ -641,7 +640,7 @@ protected:
         {
             bh = 1;
         }
-        uint16_t ya = y, bc = 0;
+        uint16_t ya = y;
         for (uint16_t row = 0; row < f.height; ++row)
         {
             for (uint16_t col = 0; col < f.width; ++col)
@@ -651,24 +650,23 @@ protected:
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = col % 8;  /* LSB-first, matching PCtoLCD C51 format */
                 /* bit=1 用画笔色，bit=0 用背景色 */
-                mComm.mBuf.Ptr()[bc++] = (f.table[byteIdx] & (1u << bitPos))
-                                    ? c888To565(mColor)
-                                    : c888To565(mBackColor);
+                mComm.mBuf.Push((f.table[byteIdx] & (1u << bitPos))
+                                     ? c888To565(mColor)
+                                     : c888To565(mBackColor));
             }
             /* 缓冲区满：批量写入显存 */
-            if (bc >= bh * f.width)
+            if (mComm.mBuf.mPos >= bh * f.width)
             {
                 SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
                 mComm.Flush(f.width * bh);
                 ya += bh;
-                bc = 0;
             }
         }
         /* 剩余不足缓冲区一整行 */
-        if (bc > 0)
+        if (mComm.mBuf.mPos > 0)
         {
             SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.Flush(bc);
+            mComm.Flush(mComm.mBuf.mPos);
         }
     }
 
@@ -684,7 +682,7 @@ protected:
         uint16_t total = w * h;
         for (uint16_t i = 0; i < total; ++i)
         {
-            mComm.mBuf.Ptr()[i % Transport::kBufSize] = c;
+            mComm.mBuf.Push(c);
             if ((i + 1) % Transport::kBufSize == 0 || i == total - 1)
             {
                 uint16_t chunk = ((i + 1) % Transport::kBufSize == 0) ? Transport::kBufSize : ((i % Transport::kBufSize) + 1);
