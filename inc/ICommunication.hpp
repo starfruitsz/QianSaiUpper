@@ -30,9 +30,13 @@ struct BufferPolicy
     /* Push value at current cursor, auto-increment */
     void Push(uint16_t val) { mData[mPos++] = val; }
 
-    /* Get raw pointer for bulk operations (e.g. Flush, vsnprintf) */
+    /* Get raw pointer to buffer start (for bulk ops like vsnprintf) */
     uint16_t* Ptr()       { return mData; }
     const uint16_t* Ptr() const { return mData; }
+
+    /* Get pointer to current cursor position (for sequential write) */
+    uint16_t* Data()       { return &mData[mPos]; }
+    const uint16_t* Data() const { return &mData[mPos]; }
 
     /* Reset write cursor to zero */
     void Reset() { mPos = 0; }
