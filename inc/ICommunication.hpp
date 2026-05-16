@@ -24,9 +24,15 @@ struct BufferPolicy
 {
     static constexpr uint16_t size = Size;  /* C++11: constexpr */
 
-    /* Access element at index, auto-advance cursor */
-    uint16_t& operator[](uint16_t idx) { return mData[idx]; }
+    /* Read element at index (const) */
     const uint16_t& operator[](uint16_t idx) const { return mData[idx]; }
+
+    /* Push value at current cursor, auto-increment */
+    void Push(uint16_t val) { mData[mPos++] = val; }
+
+    /* Get raw pointer for bulk operations (e.g. Flush, vsnprintf) */
+    uint16_t* Ptr()       { return mData; }
+    const uint16_t* Ptr() const { return mData; }
 
     /* Reset write cursor to zero */
     void Reset() { mPos = 0; }
@@ -87,7 +93,7 @@ public:
     {
         auto &buf = this->mBuf;
         auto result = std::format_to_n(
-            reinterpret_cast<char*>(&buf[0]),
+            reinterpret_cast<char*>(buf.Ptr()),
             kBufSize * 2 - 1,
             fmt,
             std::forward<Args>(args)...
@@ -95,7 +101,7 @@ public:
         uint16_t n = static_cast<uint16_t>(result.size);
         for (uint16_t i = 0; i < n; ++i)
         {
-            WriteData8(reinterpret_cast<uint8_t*>(&buf[0])[i]);
+            WriteData8(reinterpret_cast<uint8_t*>(buf.Ptr())[i]);
         }
     }
 
@@ -116,14 +122,14 @@ public:
         auto &buf = this->mBuf;
         va_list args;
         va_start(args, fmt);
-        int len = vsnprintf(reinterpret_cast<char*>(&buf[0]), kBufSize * 2, fmt, args);
+        int len = vsnprintf(reinterpret_cast<char*>(buf.Ptr()), kBufSize * 2, fmt, args);
         va_end(args);
 
         if (len < 0) return;
         uint16_t n = static_cast<uint16_t>(len < static_cast<int>(kBufSize * 2) ? len : kBufSize * 2 - 1);
         for (uint16_t i = 0; i < n; ++i)
         {
-            WriteData8(reinterpret_cast<uint8_t*>(&buf[0])[i]);
+            WriteData8(reinterpret_cast<uint8_t*>(buf.Ptr())[i]);
         }
     }
 
