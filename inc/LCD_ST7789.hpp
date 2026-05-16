@@ -33,28 +33,28 @@ private:
     void implBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
     void implSetDirection(Direction dir)
     {
-        mComm.writeCommand(0x36);
-        if (dir == Direction::Vertical)        { mComm.writeData8(0x00); }
-        else if (dir == Direction::Horizontal)     { mComm.writeData8(0x60); }
-        else if (dir == Direction::HorizontalFlip) { mComm.writeData8(0xA0); }
-        else                                       { mComm.writeData8(0xC0); }
+        this->mComm.writeCommand(0x36);
+        if (dir == Direction::Vertical)        { this->mComm.writeData8(0x00); }
+        else if (dir == Direction::Horizontal)     { this->mComm.writeData8(0x60); }
+        else if (dir == Direction::HorizontalFlip) { this->mComm.writeData8(0xA0); }
+        else                                       { this->mComm.writeData8(0xC0); }
     }
 
     void implSetAddr(uint16_t xs, uint16_t ys, uint16_t xe, uint16_t ye)
     {
-        mComm.csLow();
+        this->mComm.csLow();
         // 列地址
-        mComm.writeCommand(0x2A);
-        mComm.writeData16(xs);
-        mComm.writeData16(xe);
+        this->mComm.writeCommand(0x2A);
+        this->mComm.writeData16(xs);
+        this->mComm.writeData16(xe);
 
         // 行地址
-        mComm.writeCommand(0x2B);
-        mComm.writeData16(ys);
-        mComm.writeData16(ye);
+        this->mComm.writeCommand(0x2B);
+        this->mComm.writeData16(ys);
+        this->mComm.writeData16(ye);
 
         // 写显存（CS=0 后保持，由调用方负责释放）
-        mComm.writeCommand(0x2C);
+        this->mComm.writeCommand(0x2C);
     }
     // ============================================================
     // CRTP 入口 — 屏幕初始化
@@ -67,7 +67,7 @@ private:
         this->mComm.init();
         this->mComm.delayMs(10);     // 等待 LCD 上电复位
         this->mComm.csLow();         // 使能片选
-        writeRegisters();            // 写入 ST7789 寄存器序列
+        this->writeRegisters();            // 写入 ST7789 寄存器序列
         this->mComm.csHigh();
         this->setDirection(Direction::Vertical);
         this->setBackColor(Colors::Black);
