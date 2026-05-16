@@ -98,11 +98,8 @@ public:
             fmt,
             std::forward<Args>(args)...
         );
-        uint16_t n = static_cast<uint16_t>(result.size);
-        for (uint16_t i = 0; i < n; ++i)
-        {
-            WriteData8(reinterpret_cast<uint8_t*>(buf.Ptr())[i]);
-        }
+        uint16_t n = static_cast<uint16_t>((result.size + 1) / 2);  /* char count -> uint16_t count */
+        Flush(n);
     }
 
     /* C++23: raw string overload (no formatting overhead) */
@@ -126,11 +123,8 @@ public:
         va_end(args);
 
         if (len < 0) return;
-        uint16_t n = static_cast<uint16_t>(len < static_cast<int>(kBufSize * 2) ? len : kBufSize * 2 - 1);
-        for (uint16_t i = 0; i < n; ++i)
-        {
-            WriteData8(reinterpret_cast<uint8_t*>(buf.Ptr())[i]);
-        }
+        uint16_t n = static_cast<uint16_t>((len + 1) / 2);  /* char count -> uint16_t count */
+        Flush(n);
     }
 
 #endif  /* __cpp_lib_print */
