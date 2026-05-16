@@ -16,10 +16,9 @@ namespace CTLIB
 /* C++20: std::format / C++11: vsnprintf 可切换 */
 /* ============================================================ */
 
-class UartTransport final : public ICommunication<UartTransport>
+class UartTransport final : public ICommunication<UartTransport, 256>  /* C++11: final */
 {
 public:
-    static constexpr uint16_t kTxBufSize = 256;  /* C++11: constexpr */
 
     explicit UartTransport(UART_HandleTypeDef *huart) noexcept : mHuart(huart)  /* C++11: noexcept, explicit */
     {
@@ -87,24 +86,28 @@ public:
     void ImplDcData()       {}
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
 
+    /* === Buffer Flush - UART already sent byte-by-byte === */
+    void ImplFlush(uint16_t) {}
+
     /* ============================================================ */
     /* Printf — C++11 可变参数格式化打印 */
     /* 基于 vsnprintf，最大 kTxBufSize 字节 */
     /* ============================================================ */
     void Printf(const char *fmt, ...)
     {
-        char buf[kTxBufSize];  /* C++11: stack-allocated fixed array */
+        auto &buf = this->mBuf;   /* 使用基类缓冲区，避免栈分配 */
         va_list args;
-        va_start(args, fmt);   /* C++11: variadic arguments */
-        int len = vsnprintf(buf, sizeof(buf), fmt, args);  /* C++11: vsnprintf */
+        va_start(args, fmt);      /* C++11: variadic arguments */
+        int len = vsnprintf(reinterpret_cast<char*>(buf.data), kBufSize * 2, fmt, args);
         va_end(args);
 
         if (len < 0) return;
-        uint16_t n = static_cast<uint16_t>(len < static_cast<int>(sizeof(buf)) ? len : sizeof(buf) - 1);
+        uint16_t n = static_cast<uint16_t>(len < static_cast<int>(kBufSize * 2) ? len : kBufSize * 2 - 1);
         for (uint16_t i = 0; i < n; ++i)
         {
-            ImplWriteData8(static_cast<uint8_t>(buf[i]));
+            ImplWriteData8(reinterpret_cast<uint8_t*>(buf.data)[i]);
         }
+        this->Flush(n);
     }
 
 private:

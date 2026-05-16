@@ -11,14 +11,13 @@ namespace CTLIB
 /* LCD_ST7789 驱动层（CRTP 子类） */
 /* 模板参数： */
 /* Transport — SPI 传输层（CRTP ICommunication 子类） */
-/* BufferSz  — 像素缓冲区大小，默认 1024 */
 /* ============================================================ */
 
-template <typename Transport, uint16_t BufferSz = 1024>
+template <typename Transport>
 class LCD_ST7789 final
-    : public ILCD<LCD_ST7789<Transport, BufferSz>, Transport, BufferSz>
+    : public ILCD<LCD_ST7789<Transport>, Transport>
 {
-    using Base = ILCD<LCD_ST7789<Transport, BufferSz>, Transport, BufferSz>;
+    using Base = ILCD<LCD_ST7789<Transport>, Transport>;  /* C++11: type alias */
     friend Base;
 
 public:

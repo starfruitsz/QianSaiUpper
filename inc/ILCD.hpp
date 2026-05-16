@@ -101,13 +101,12 @@ struct BufferPolicy
 /* CRTP 三个模板参数： */
 /* Driver    — 具体驱动类（如 LCD_ST7789） */
 /* Transport — 通信传输层（CRTP ICommunication 子类） */
-/* BufferSz  — 片上像素缓冲区大小，默认 1024 */
 /* ============================================================ */
 
-template <typename Driver, typename Transport, uint16_t BufferSz = 1024>
+template <typename Driver, typename Transport>
 class ILCD
 {
-    static_assert(std::is_base_of_v<ICommunication<Transport>, Transport>,
+    static_assert(std::is_base_of_v<ICommunication<Transport, 1024>, Transport> || std::is_base_of_v<ICommunication<Transport, 256>, Transport>,
                   "Transport must derive from ICommunication<Transport>");
 
 public:
@@ -538,7 +537,7 @@ public:
             return;
         }
         /* 计算缓冲区一次能容纳多少行图片数据 */
-        uint16_t bh = (BufferSz / 2) / w;
+        uint16_t bh = (Transport::kBufSize / 2) / w;
         if (bh == 0)
         {
             bh = 1;
@@ -557,14 +556,14 @@ public:
                     {
                         break;
                     }
-                    mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
+                    mComm.mBuf.data[bc++] = (byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor);
                 }
             }
             /* 缓冲区满或到最后一行：批量写入显存 */
             if (bc >= bh * w)
             {
                 SetAddr(x, ya, x + w - 1, ya + bh - 1);
-                mComm.WriteBulk(mBuf.data, w * bh);
+                mComm.WriteBulk(mComm.mBuf.data, w * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -573,13 +572,12 @@ public:
         if (bc > 0)
         {
             SetAddr(x, ya, x + w - 1, row + y);
-            mComm.WriteBulk(mBuf.data, bc);
+            mComm.WriteBulk(mComm.mBuf.data, bc);
         }
     }
 
 protected:
     Transport              &mComm;  /* 通信传输层引用 */
-    BufferPolicy<BufferSz>  mBuf;  /* 像素数据缓冲区 */
     uint16_t  mWidth;  /* 屏幕像素宽度 */
     uint16_t  mHeight;  /* 屏幕像素高度 */
     uint32_t  mColor      = Colors::White;  /* 当前画笔颜色 */
@@ -615,7 +613,7 @@ protected:
     /* charIdx: ASCII 为 (c-' ')，中文为字库表索引 */
     void drawGlyphFromFont(uint16_t x, uint16_t y, uint16_t charIdx, const Font &f)
     {
-        uint16_t bh = (BufferSz / 2) / f.width;
+        uint16_t bh = (Transport::kBufSize / 2) / f.width;
         if (bh == 0)
         {
             bh = 1;
@@ -630,7 +628,7 @@ protected:
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
                 uint8_t  bitPos  = 7 - (col % 8);
                 /* bit=1 用画笔色，bit=0 用背景色 */
-                mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
+                mComm.mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
                                     ? c888To565(mColor)
                                     : c888To565(mBackColor);
             }
@@ -638,7 +636,7 @@ protected:
             if (bc >= bh * f.width)
             {
                 SetAddr(x, ya, x + f.width - 1, ya + bh - 1);
-                mComm.WriteBulk(mBuf.data, f.width * bh);
+                mComm.WriteBulk(mComm.mBuf.data, f.width * bh);
                 ya += bh;
                 bc = 0;
             }
@@ -647,7 +645,7 @@ protected:
         if (bc > 0)
         {
             SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.WriteBulk(mBuf.data, bc);
+            mComm.WriteBulk(mComm.mBuf.data, bc);
         }
     }
 
@@ -663,11 +661,11 @@ protected:
         uint16_t total = w * h;
         for (uint16_t i = 0; i < total; ++i)
         {
-            mBuf.data[i % BufferSz] = c;
-            if ((i + 1) % BufferSz == 0 || i == total - 1)
+            mComm.mBuf.data[i % Transport::kBufSize] = c;
+            if ((i + 1) % Transport::kBufSize == 0 || i == total - 1)
             {
-                uint16_t chunk = ((i + 1) % BufferSz == 0) ? BufferSz : ((i % BufferSz) + 1);
-                mComm.WriteBulk(mBuf.data, chunk);
+                uint16_t chunk = ((i + 1) % Transport::kBufSize == 0) ? Transport::kBufSize : ((i % Transport::kBufSize) + 1);
+                mComm.WriteBulk(mComm.mBuf.data, chunk);
             }
         }
     }

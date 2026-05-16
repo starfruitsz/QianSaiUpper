@@ -1,4 +1,4 @@
-#ifndef SPITRANSPORT_HPP
+﻿#ifndef SPITRANSPORT_HPP
 #define SPITRANSPORT_HPP
 
 #include "ICommunication.hpp"
@@ -8,7 +8,7 @@
 namespace CTLIB
 {
 
-class SPITransport final : public ICommunication<SPITransport>
+class SPITransport final : public ICommunication<SPITransport, 1024>
 {
 public:
     explicit SPITransport(SPI_HandleTypeDef *hspi) noexcept : mHspi(hspi)
@@ -113,6 +113,9 @@ public:
     void ImplDcCommand()    { CbDcCmd(); }
     void ImplDcData()       { CbDcDat(); }
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
+
+    /* === Buffer Flush — SPI 无额外操作，WriteBulk 已自管理 CS === */
+    void ImplFlush(uint16_t) {}
 
 private:
     SPI_HandleTypeDef *mHspi;
