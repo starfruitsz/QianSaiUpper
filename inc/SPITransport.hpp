@@ -32,7 +32,7 @@ public:
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_13; g.Mode=GPIO_MODE_OUTPUT_PP;  g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_LOW;       HAL_GPIO_Init(GPIOD,&g); }
 
             CbDcDat(); CbCsHigh();
-            GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u;  // Ĭ�Ϲر���
+            GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u;  /* Ĭ�Ϲر��� */
 
             mHspi->Instance            = SPI3;
             mHspi->Init.Mode           = SPI_MODE_MASTER;
@@ -52,7 +52,7 @@ public:
         };
     }
 
-    // ===== �û����滻�Ļص� =====
+    /* ===== �û����滻�Ļص� ===== */
     std::function<void()>         CbInit;
     std::function<void()>         CbCsLow;
     std::function<void()>         CbCsHigh;
@@ -60,7 +60,7 @@ public:
     std::function<void()>         CbDcDat;
     std::function<void(uint32_t)> CbDelayMs;
 
-    // ===== CRTP �ӿ� =====
+    /* ===== CRTP �ӿ� ===== */
 
     void ImplInit() { CbInit(); }
 
@@ -118,6 +118,7 @@ private:
     SPI_HandleTypeDef *mHspi;
 };
 
-} // namespace CTLIB
+}  /* namespace CTLIB */
 
 #endif
+

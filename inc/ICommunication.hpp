@@ -6,7 +6,7 @@
 namespace CTLIB
 {
 
-// ͨ�Ŵ���� CRTP �ӿ�
+/* ͨ�Ŵ���� CRTP �ӿ� */
 
 template <typename Impl>
 class ICommunication
@@ -31,6 +31,7 @@ private:
     Impl &GetImpl() { return static_cast<Impl&>(*this); }
 };
 
-} // namespace CTLIB
+}  /* namespace CTLIB */
 
 #endif
+
