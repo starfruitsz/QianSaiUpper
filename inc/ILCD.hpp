@@ -288,8 +288,7 @@ public:
                     DrawChar(cx, y, static_cast<uint8_t>(cp));
                     cx += mAsciiFont->width;
                 }
-                else if (cp == '
-')
+                else if (cp == '\\n')
                 {
                     cx = x;
                     y += mAsciiFont->height;
