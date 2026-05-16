@@ -1,4 +1,4 @@
-﻿#ifndef LCD_ST7789_HPP
+#ifndef LCD_ST7789_HPP
 #define LCD_ST7789_HPP
 
 #include "ILCD.hpp"
@@ -23,6 +23,10 @@ class LCD_ST7789 final
 
 public:
     // 构造：绑定传输层，指定屏幕宽高（默认 240×240）
+    // 背光控制（直接操作 GPIOD BSRR 寄存器）
+    void backlightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
+    void backlightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
+
     explicit LCD_ST7789(Transport &comm, uint16_t w = 240, uint16_t h = 240)
         : Base(comm, w, h)
     {
@@ -46,7 +50,7 @@ private:
         this->setBackColor(Colors::Black);
         this->setColor(Colors::White);
         this->clear();               // 全屏清屏
-        this->mComm.backlightOn();   // 开启背光
+        this->backlightOn();   // 开启背光
     }
 
     // ============================================================
@@ -58,8 +62,9 @@ private:
         {
             return;
         }
-        this->setAddr(x, y, x, y);
-        this->mComm.writeData16(Base::c888To565(c888));
+        this->setAddr(x, y, x, y);    // CS=0，设地址窗口
+        this->mComm.writeData16(Base::c888To565(c888));  // 写颜色
+        this->mComm.csHigh();           // CS=1，释放片选
     }
 
     // ============================================================
