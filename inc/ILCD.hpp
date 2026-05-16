@@ -566,30 +566,28 @@ public:
             bh = 1;
         }
         uint16_t ya = y;
-        uint16_t row = 0;
-        for (; row < h; ++row)
+        uint16_t rowsInBuf = 0;
+        for (uint16_t row = 0; row < h; ++row)
         {
-            /* 逐字节解析位图，bit=1 用画笔色，bit=0 用背景色 */
             for (uint16_t col = 0; col < (w + 7) / 8; ++col)
             {
                 uint8_t byte = p[row * ((w + 7) / 8) + col];
                 for (uint8_t bit = 0; bit < 8; ++bit)
                 {
-                    if (col * 8 + bit >= w)
-                    {
-                        break;
-                    }
+                    if (col * 8 + bit >= w) break;
                     mComm.Buff((byte & (1u << bit)) ? c888To565(mColor) : c888To565(mBackColor));
                 }
             }
-            /* Buff auto-flushes on overflow */
+            rowsInBuf++;
+            if (mComm.BuffPos() >= bh * w || row == h - 1)
+            {
+                SetAddr(x, ya, x + w - 1, ya + rowsInBuf - 1);
+                mComm.Flush();
+                ya += rowsInBuf;
+                rowsInBuf = 0;
+            }
         }
-        /* 剩余不足一行 */
-        if (mComm.BuffPos() > 0)
-        {
-            SetAddr(x, ya, x + w - 1, row + y);
-            mComm.Flush();
-        }
+
     }
 
 protected:
@@ -635,26 +633,26 @@ protected:
             bh = 1;
         }
         uint16_t ya = y;
+        uint16_t rowsInBuf = 0;
         for (uint16_t row = 0; row < f.height; ++row)
         {
             for (uint16_t col = 0; col < f.width; ++col)
             {
-                /* 中文字库: charIdx * (sizes+2) 跳转到对应字模；ASCII: charIdx = (c-' ')*sizes */
-                uint16_t base = (f.tableRows > 0) ? charIdx * (f.sizes + 2) : charIdx * f.sizes;  /* C++11: conditional */
+                uint16_t base = (f.tableRows > 0) ? charIdx * (f.sizes + 2) : charIdx * f.sizes;
                 uint16_t byteIdx = base + row * ((f.width + 7) / 8) + (col / 8);
-                uint8_t  bitPos  = col % 8;  /* LSB-first, matching PCtoLCD C51 format */
-                /* bit=1 用画笔色，bit=0 用背景色 */
+                uint8_t  bitPos  = col % 8;
                 mComm.Buff((f.table[byteIdx] & (1u << bitPos))
                                      ? c888To565(mColor)
                                      : c888To565(mBackColor));
             }
-            /* Buff auto-flushes on overflow */
-        }
-        /* 剩余不足缓冲区一整行 */
-        if (mComm.BuffPos() > 0)
-        {
-            SetAddr(x, ya, x + f.width - 1, y + f.height - 1);
-            mComm.Flush();
+            rowsInBuf++;
+            if (mComm.BuffPos() >= bh * f.width || row == f.height - 1)
+            {
+                SetAddr(x, ya, x + f.width - 1, ya + rowsInBuf - 1);
+                mComm.Flush();
+                ya += rowsInBuf;
+                rowsInBuf = 0;
+            }
         }
     }
 
@@ -668,11 +666,11 @@ protected:
         SetAddr(x, y, x + w - 1, y + h - 1);
         uint16_t c = c888To565(color888);
         uint16_t total = w * h;
+        SetAddr(x, y, x + w - 1, y + h - 1);
         for (uint16_t i = 0; i < total; ++i)
         {
             mComm.Buff(c);
         }
-        SetAddr(x, y, x + w - 1, y + h - 1);
         mComm.Flush();
     }
 };

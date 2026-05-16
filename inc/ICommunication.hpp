@@ -83,7 +83,7 @@ public:
     inline void Flush()              { Flush(mBuf.mPos); }
 
     /* --- Buffer helpers --- */
-    inline void Buff(uint16_t val)   { mBuf.Push(val); if (mBuf.mPos >= kBufSize) Flush(); }  /* push, auto-flush on full */
+    inline void Buff(uint16_t val)   { mBuf.Push(val); }  /* push one pixel */
     inline uint16_t BuffPos() const  { return mBuf.mPos; }             /* read cursor */
 
     BufferPolicy<BufSz>  mBuf;  /* C++11: shared buffer, accessible by ILCD */
