@@ -274,7 +274,7 @@ public:
                 // 高字节 >= 0xA1 判定为中文
                 DrawChinese(cx, y, t);
                 t += 2;
-                cx += ChFont->width;
+                cx += mChFont->width;
             }
             else if (c >= ' ' && c <= '~' && mAsciiFont)
             {
@@ -345,7 +345,7 @@ public:
     // 水平线（快速填充一行）
     void DrawLineH(uint16_t x, uint16_t y, uint16_t w)
     {
-        fillRectImpl(x, y, w, 1, Color);
+        fillRectImpl(x, y, w, 1, mColor);
     }
 
     // 垂直线（快速填充一列）
@@ -606,8 +606,8 @@ protected:
     {
         xs += mXOffset;
         ys += mYOffset;
-        xe += XOffset;
-        ye += YOffset;
+        xe += mXOffset;
+        ye += mYOffset;
         static_cast<Driver*>(this)->ImplSetAddr(xs, ys, xe, ye);
     }
 
@@ -631,8 +631,8 @@ protected:
                 uint8_t  bitPos  = 7 - (col % 8);
                 // bit=1 用画笔色，bit=0 用背景色
                 mBuf.data[bc++] = (f.table[byteIdx] & (1u << bitPos))
-                                    ? c888To565(Color)
-                                    : c888To565(BackColor);
+                                    ? c888To565(mColor)
+                                    : c888To565(mBackColor);
             }
             // 缓冲区满：批量写入显存
             if (bc >= bh * f.width)
