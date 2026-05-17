@@ -15,8 +15,6 @@ public:
     {
         CbCsLow   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_11 << 16u; };
         CbCsHigh  = [] { GPIOD->BSRR = GPIO_PIN_11; };
-        CbDcCmd   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_12 << 16u; };
-        CbDcDat   = [] { GPIOD->BSRR = GPIO_PIN_12; };
         CbDelayMs = [] (uint32_t ms) { HAL_Delay(ms); };
 
         CbInit = [this]
@@ -28,10 +26,9 @@ public:
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_3;  g.Mode=GPIO_MODE_AF_PP;      g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_VERY_HIGH; g.Alternate=GPIO_AF6_SPI3; HAL_GPIO_Init(GPIOB,&g); }
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_5;  g.Mode=GPIO_MODE_AF_PP;      g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_VERY_HIGH; g.Alternate=GPIO_AF6_SPI3; HAL_GPIO_Init(GPIOB,&g); }
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_11; g.Mode=GPIO_MODE_OUTPUT_PP;  g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_HIGH;      HAL_GPIO_Init(GPIOD,&g); }
-            { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_12; g.Mode=GPIO_MODE_OUTPUT_PP;  g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_HIGH;      HAL_GPIO_Init(GPIOD,&g); }
             { GPIO_InitTypeDef g={}; g.Pin=GPIO_PIN_13; g.Mode=GPIO_MODE_OUTPUT_PP;  g.Pull=GPIO_NOPULL; g.Speed=GPIO_SPEED_FREQ_LOW;       HAL_GPIO_Init(GPIOD,&g); }
 
-            CbDcDat(); CbCsHigh();
+            CbCsHigh();
             GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u;  /* Ĭ�Ϲر��� */
 
             mHspi->Instance            = SPI3;
@@ -54,22 +51,11 @@ public:
     std::function<void()>         CbInit;
     std::function<void()>         CbCsLow;
     std::function<void()>         CbCsHigh;
-    std::function<void()>         CbDcCmd;
-    std::function<void()>         CbDcDat;
     std::function<void(uint32_t)> CbDelayMs;
 
     void ImplInit() { CbInit(); }
 
     /* LCD command byte (DC=0, then DC=1) */
-    void WriteCommand(uint8_t cmd)
-    {
-        while (mHspi->Instance->SR & SPI_SR_BSY) {}
-        CbDcCmd();
-        mHspi->Instance->DR = cmd;
-        while (!(mHspi->Instance->SR & SPI_SR_TXE)) {}
-        while (mHspi->Instance->SR & SPI_SR_BSY) {}
-        CbDcDat();
-    }
 
     void ImplWriteData8(uint8_t data)
     {
@@ -92,8 +78,6 @@ public:
     void CsHigh()    { CbCsHigh(); }       /* CS = 1 */
 
     /* --- Data/Command pin --- */
-    void DcCommand() { CbDcCmd(); }        /* DC = 0 */
-    void DcData()    { CbDcDat(); }        /* DC = 1 */
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
 
     /* === Buffer Flush - SPI burst write with CS management === */

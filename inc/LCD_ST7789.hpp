@@ -24,14 +24,36 @@ public:
     explicit LCD_ST7789(Transport &comm, uint16_t w = 240, uint16_t h = 240)
         : Base(comm, w, h)
     {
+        __HAL_RCC_GPIOD_CLK_ENABLE();
+        { 
+            GPIO_InitTypeDef g={}; 
+            g.Pin=GPIO_PIN_12; 
+            g.Mode=GPIO_MODE_OUTPUT_PP;  
+            g.Pull=GPIO_NOPULL; 
+            g.Speed=GPIO_SPEED_FREQ_HIGH;      
+            HAL_GPIO_Init(GPIOD,&g); 
+        }
+        DCCommand   = [] { GPIOD->BSRR = (uint32_t)GPIO_PIN_12 << 16u; };
+        DCData      = [] { GPIOD->BSRR = GPIO_PIN_12; };
+        DCData();
     }
 
 private:
+    std::function<void()>         DCCommand;
+    std::function<void()>         DCData;
+
+    void WriteCommand(uint8_t cmd)
+    {
+        DCCommand();
+        this->mComm.WriteData8(cmd);
+        DCData();
+    }
+
     void ImplBacklightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
     void ImplBacklightOff() { GPIOD->BSRR = (uint32_t)GPIO_PIN_13 << 16u; }
     void ImplSetDirection(Direction dir)
     {
-        this->mComm.WriteCommand(0x36);
+        this->WriteCommand(0x36);
         if (dir == Direction::Vertical)        { this->mComm.WriteData8(0x00); }
         else if (dir == Direction::Horizontal)     { this->mComm.WriteData8(0x60); }
         else if (dir == Direction::HorizontalFlip) { this->mComm.WriteData8(0xA0); }
@@ -42,17 +64,17 @@ private:
     {
         this->mComm.CsLow();
         /* 列地址 */
-        this->mComm.WriteCommand(0x2A);
+        this->WriteCommand(0x2A);
         this->mComm.WriteData16(xs);
         this->mComm.WriteData16(xe);
 
         /* 行地址 */
-        this->mComm.WriteCommand(0x2B);
+        this->WriteCommand(0x2B);
         this->mComm.WriteData16(ys);
         this->mComm.WriteData16(ye);
 
         /* 写显存（CS=0 后保持，由调用方负责释放） */
-        this->mComm.WriteCommand(0x2C);
+        this->WriteCommand(0x2C);
     }
     /* ============================================================ */
     /* CRTP 入口 — 屏幕初始化 */
@@ -140,7 +162,7 @@ private:
     {
         for (const auto &[cmd, data] : kRegs)
         {
-            this->mComm.WriteCommand(cmd);
+            this->WriteCommand(cmd);
             for (auto d : data)
             {
                 this->mComm.WriteData8(d);
