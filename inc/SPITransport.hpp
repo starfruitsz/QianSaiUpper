@@ -76,6 +76,7 @@ public:
     /* --- Chip-select (active-low) --- */
     void CsLow()     { CbCsLow(); }        /* CS = 0 */
     void CsHigh()    { CbCsHigh(); }       /* CS = 1 */
+    void WaitBsy()  { while (mHspi->Instance->SR & SPI_SR_BSY) {} }  /* wait SPI idle */
 
     /* --- Data/Command pin --- */
     void ImplDelayMs(uint32_t ms) { CbDelayMs(ms); }
