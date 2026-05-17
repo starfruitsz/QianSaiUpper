@@ -45,10 +45,10 @@ private:
     void WriteCommand(uint8_t cmd)
     {
         this->mComm.WaitBsy();  /* wait SPI idle */
-        DcCommand();
+        DCCommand();
         this->mComm.WriteData8(cmd);
         this->mComm.WaitBsy();  /* wait shift complete */
-        DcData();
+        DCData();
     }
 
     void ImplBacklightOn()  { GPIOD->BSRR = GPIO_PIN_13; }
