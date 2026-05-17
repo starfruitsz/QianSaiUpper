@@ -46,6 +46,7 @@ private:
     {
         DCCommand();
         this->mComm.WriteData8(cmd);
+        this->mComm.WaitBsy();  /* wait bus idle before DC=1 */
         DCData();
     }
 
